@@ -100,6 +100,8 @@ describe('versioned local storage', () => {
       ...DEFAULT_PREFERENCES,
       preset: 'flow' as const,
       durationMinutes: 90,
+      volume: 1,
+      previousVolume: 1,
     }
 
     expect(saveTimerState(timer, storage)).toBe(true)

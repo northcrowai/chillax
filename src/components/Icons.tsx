@@ -12,14 +12,32 @@ const iconProps = {
   viewBox: '0 0 24 24',
 } as const
 
-export function LeafMark(props: IconProps) {
+export function ChillaxMark(props: IconProps) {
   return (
-    <svg {...iconProps} {...props} viewBox="0 0 32 32">
+    <svg {...iconProps} {...props} viewBox="0 0 64 64">
+      <defs>
+        <radialGradient
+          id="chillax-orb-gradient"
+          cx="0"
+          cy="0"
+          r="1"
+          gradientTransform="translate(22 19) rotate(45) scale(50)"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stop-color="#b8ddce" />
+          <stop offset="0.48" stop-color="#5f9689" />
+          <stop offset="1" stop-color="#254f47" />
+        </radialGradient>
+      </defs>
+      <circle cx="32" cy="32" fill="url(#chillax-orb-gradient)" r="27" />
       <path
-        d="M5.5 18.4C9.1 8.9 22.3 6.1 27 11.2c-5.1 1.3-8.7 4.9-10.5 10.7-4 .6-8.3-.6-11-3.5Z"
-        fill="currentColor"
+        d="M15.5 36.1C21.3 27.9 27.6 26.4 33.1 30.9C38 34.9 42.2 34.6 48.5 26.7"
+        fill="none"
+        stroke="#fffdf9"
+        stroke-linecap="round"
+        stroke-width="4.8"
       />
-      <path d="M8.6 23.2c4.6-5.6 9.7-9.1 16.3-11" stroke="white" stroke-linecap="round" stroke-width="1.8" />
+      <circle cx="23.5" cy="21.4" fill="#fffdf9" opacity="0.46" r="3.2" />
     </svg>
   )
 }

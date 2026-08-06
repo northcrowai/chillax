@@ -27,7 +27,7 @@ export function VolumeControl({ value, disabled = false, onChange, onToggleMute 
           <span class="sr-only">Soundscape volume</span>
           <input
             disabled={disabled}
-            max="0.75"
+            max="1"
             min="0"
             onInput={(event) => onChange(Number(event.currentTarget.value))}
             step="0.01"

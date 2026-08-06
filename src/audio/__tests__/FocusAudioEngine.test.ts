@@ -146,6 +146,7 @@ class MockAudioContext {
   state: AudioContextState = 'suspended'
   currentTime = 10
   readonly destination = new MockAudioNode()
+  readonly compressors: MockCompressorNode[] = []
   readonly gains: MockGainNode[] = []
   readonly filters: MockBiquadFilterNode[] = []
   readonly mediaSources: MockMediaElementAudioSourceNode[] = []
@@ -163,7 +164,9 @@ class MockAudioContext {
   }
 
   createDynamicsCompressor(): MockCompressorNode {
-    return new MockCompressorNode()
+    const node = new MockCompressorNode()
+    this.compressors.push(node)
+    return node
   }
 
   createBiquadFilter(): MockBiquadFilterNode {
@@ -262,6 +265,18 @@ describe('FocusAudioEngine', () => {
     expect(MockAudioContext.instances[0].audioWorklet.addModule).toHaveBeenCalledTimes(1)
     expect(MockAudioWorkletNode.instances).toHaveLength(1)
     expect(engine.getState()).toMatchObject({ isReady: true, isPlaying: true, volume: 1 })
+
+    const context = MockAudioContext.instances[0]
+    const masterGain = context.gains[0].gain
+    expect(context.compressors[0].threshold.value).toBe(-16)
+    expect(context.compressors[0].ratio.value).toBe(16)
+    engine.setVolume(0.76)
+    expect(engine.getState().volume).toBe(0.76)
+    expect(masterGain.ramps.at(-1)?.target).toBeCloseTo(0.5472)
+
+    engine.setVolume(1)
+    expect(engine.getState().volume).toBe(1)
+    expect(masterGain.ramps.at(-1)?.target).toBe(0.72)
 
     engine.setVolume(Number.NaN)
     expect(engine.getState().volume).toBe(0)

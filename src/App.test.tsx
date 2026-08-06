@@ -52,7 +52,7 @@ describe('Chillax app', () => {
     expect(screen.getByRole('button', { name: /Standard: Balanced/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: '60 minutes' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByLabelText('60:00 remaining')).toBeInTheDocument()
-    expect(screen.getByText('One uninterrupted hour')).toBeInTheDocument()
+    expect(screen.queryByText('One uninterrupted hour')).not.toBeInTheDocument()
   })
 
   it('changes and persists the selected soundscape, texture, and session', async () => {
@@ -133,7 +133,7 @@ describe('Chillax app', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByLabelText('120:00 remaining')).toBeInTheDocument()
-    expect(screen.getByText('120 minute custom session')).toBeInTheDocument()
+    expect(screen.queryByText('120 minute custom session')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Mute soundscape' }))
     expect(audioMocks.setVolume).toHaveBeenLastCalledWith(0)
@@ -165,7 +165,7 @@ describe('Chillax app', () => {
     expect(screen.getByLabelText('30:00 remaining')).toBeInTheDocument()
     expect(screen.getByText('Focus 1 of 3')).toBeInTheDocument()
     expect(screen.getByText('Focus session ready')).toBeInTheDocument()
-    expect(screen.getByText('30 focus / 7 short / 20 long / every 3')).toBeInTheDocument()
+    expect(screen.queryByText('30 focus / 7 short / 20 long / every 3')).not.toBeInTheDocument()
 
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')

@@ -15,6 +15,7 @@ test('loads the complete focus player without browser errors', async ({ page }) 
   })
 
   await expect(page.getByRole('heading', { name: 'Find your quiet.' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Chillax home' }).locator('svg')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start focus session' })).toBeEnabled()
   await expect(page.getByLabel('60:00 remaining')).toBeVisible()
   await expect(page.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')
@@ -26,6 +27,10 @@ test('loads the complete focus player without browser errors', async ({ page }) 
 test('plays, changes soundscape, pauses, and remembers choices', async ({ page }) => {
   await page.getByRole('button', { name: /Flow/ }).click()
   await page.getByRole('button', { name: /Strong: Fuller/ }).click()
+  const volumeSlider = page.getByRole('slider', { name: 'Soundscape volume' })
+  await expect(volumeSlider).toHaveAttribute('max', '1')
+  await volumeSlider.fill('1')
+  await expect(page.getByLabel('Volume 100 percent')).toBeVisible()
   await page.getByRole('button', { name: 'Custom' }).click()
   const customDialog = page.getByRole('dialog', { name: 'Set your rhythm.' })
   await customDialog.getByRole('spinbutton', { name: /Session length/ }).fill('25')
@@ -42,6 +47,7 @@ test('plays, changes soundscape, pauses, and remembers choices', async ({ page }
   await page.reload()
   await expect(page.getByRole('button', { name: /Flow/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: /Strong: Fuller/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByLabel('Volume 100 percent')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('Session paused', { exact: true })).toBeVisible()
 })
@@ -172,7 +178,7 @@ test('configures and restores a complete Pomodoro cycle', async ({ page }) => {
 
   await expect(page.getByLabel('30:00 remaining')).toBeVisible()
   await expect(page.getByText('Focus 1 of 3', { exact: true })).toBeVisible()
-  await expect(page.getByText('30 focus / 7 short / 20 long / every 3', { exact: true })).toBeVisible()
+  await expect(page.getByText('30 focus / 7 short / 20 long / every 3', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Start focus session' }).click()
   await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause focus session' }).click()
@@ -185,6 +191,11 @@ test('configures and restores a complete Pomodoro cycle', async ({ page }) => {
 
 test('shows complete controls without truncation at the reported layout size', async ({ page }) => {
   await page.setViewportSize({ width: 718, height: 640 })
+
+  await expect(page.locator('.session-selector__summary')).toHaveCount(0)
+  expect(await page.locator('.visual-panel').evaluate((element) =>
+    getComputedStyle(element, '::after').content,
+  )).toBe('none')
 
   for (const name of ['60 minutes', 'Infinite', 'Custom']) {
     const button = page.getByRole('button', { name })

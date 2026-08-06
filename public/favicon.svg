@@ -1,11 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Chillax">
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="g" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#586f66"/>
-      <stop offset="1" stop-color="#7785a5"/>
-    </linearGradient>
+    <radialGradient id="chillax-orb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(22 19) rotate(45) scale(50)">
+      <stop stop-color="#B8DDCE"/>
+      <stop offset=".48" stop-color="#5F9689"/>
+      <stop offset="1" stop-color="#254F47"/>
+    </radialGradient>
   </defs>
-  <rect width="64" height="64" rx="18" fill="#f3f0e9"/>
-  <path d="M15 35c7-13 27-17 35-8-7 2-12 7-15 15-6 1-14-1-20-7Z" fill="url(#g)"/>
-  <path d="M20 42c8-9 16-13 27-14" fill="none" stroke="#f3f0e9" stroke-width="3.5" stroke-linecap="round"/>
+  <rect width="64" height="64" rx="17" fill="#F7F3ED"/>
+  <g transform="translate(32 32) scale(0.9) translate(-32 -32)">
+    <circle cx="32" cy="32" r="27" fill="url(#chillax-orb)"/>
+    <path d="M15.5 36.1C21.3 27.9 27.6 26.4 33.1 30.9C38 34.9 42.2 34.6 48.5 26.7" fill="none" stroke="#FFFDF9" stroke-width="4.8" stroke-linecap="round"/>
+    <circle cx="23.5" cy="21.4" r="3.2" fill="#FFFDF9" opacity=".46"/>
+  </g>
 </svg>

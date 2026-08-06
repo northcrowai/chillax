@@ -52,7 +52,7 @@ const POMODORO_PHASE_NAMES: Readonly<Record<PomodoroPhase, string>> = {
   'long-break': 'Long break',
 }
 
-const clampVolume = (volume: number) => Math.max(0, Math.min(0.75, volume))
+const clampVolume = (volume: number) => Math.max(0, Math.min(1, volume))
 
 const formatTimer = (milliseconds: number, countUp: boolean) => {
   const totalSeconds = countUp
@@ -327,7 +327,7 @@ export function App() {
 
   const handleToggleMute = useCallback(() => {
     const nextVolume = preferences.volume === 0
-      ? Math.max(0.1, Math.min(0.75, preferences.previousVolume))
+      ? Math.max(0.1, Math.min(1, preferences.previousVolume))
       : 0
     setPreferences((current) => ({
       ...current,
@@ -501,7 +501,6 @@ export function App() {
                   onOpenCustom={openCustomSession}
                   onSelect={handleSessionSelect}
                   plan={sessionPlan}
-                  pomodoroConfig={pomodoroState.config}
                 />
                 <IntensitySelector
                   disabled={audioIsBusy}

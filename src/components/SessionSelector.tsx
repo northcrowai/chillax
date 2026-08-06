@@ -1,26 +1,16 @@
 import type { Ref } from 'preact'
-import type { PomodoroConfig, SessionChoice, SessionPlanV1 } from '../types'
+import type { SessionChoice, SessionPlanV1 } from '../types'
 
 interface SessionSelectorProps {
   plan: SessionPlanV1
-  pomodoroConfig: PomodoroConfig
   disabled?: boolean
   customButtonRef?: Ref<HTMLButtonElement>
   onOpenCustom: () => void
   onSelect: (choice: Exclude<SessionChoice, 'custom'>) => void
 }
 
-const getPlanSummary = (plan: SessionPlanV1, pomodoroConfig: PomodoroConfig) => {
-  if (plan.choice === 'sixty') return 'One uninterrupted hour'
-  if (plan.choice === 'endless') return 'Count up without a finish time'
-  if (plan.customMode === 'duration') return `${plan.customDurationMinutes} minute custom session`
-
-  return `${pomodoroConfig.workMinutes} focus / ${pomodoroConfig.shortBreakMinutes} short / ${pomodoroConfig.longBreakMinutes} long / every ${pomodoroConfig.focusSessionsBeforeLongBreak}`
-}
-
 export function SessionSelector({
   plan,
-  pomodoroConfig,
   disabled = false,
   customButtonRef,
   onOpenCustom,
@@ -57,10 +47,6 @@ export function SessionSelector({
           Custom
         </button>
       </div>
-      <p class="session-selector__summary">
-        <span aria-hidden="true" />
-        {getPlanSummary(plan, pomodoroConfig)}
-      </p>
     </fieldset>
   )
 }
