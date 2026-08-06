@@ -13,6 +13,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Chillax — Find your quiet</title>
+    <script type="module">
+      if (window.location.protocol === 'file:') {
+        window.location.replace('https://chillax-northcrow.vercel.app')
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
