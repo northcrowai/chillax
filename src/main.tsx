@@ -1,4 +1,5 @@
 import { render } from 'preact'
+import '@fontsource-variable/manrope/wght.css'
 import { App } from './App'
 import './styles.css'
 

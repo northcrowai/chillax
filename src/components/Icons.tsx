@@ -65,8 +65,38 @@ export function VolumeIcon({ muted = false, ...props }: IconProps & { muted?: bo
 export function SettingsIcon(props: IconProps) {
   return (
     <svg {...iconProps} {...props}>
-      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" />
-      <path d="M12 3.8v2M12 18.2v2M3.8 12h2M18.2 12h2M6.2 6.2l1.4 1.4M16.4 16.4l1.4 1.4M17.8 6.2l-1.4 1.4M7.6 16.4l-1.4 1.4" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      <path d="M5 7h6M15 7h4M5 12h2M11 12h8M5 17h8M17 17h2" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      <circle cx="13" cy="7" r="2" stroke="currentColor" stroke-width="1.8" />
+      <circle cx="9" cy="12" r="2" stroke="currentColor" stroke-width="1.8" />
+      <circle cx="15" cy="17" r="2" stroke="currentColor" stroke-width="1.8" />
+    </svg>
+  )
+}
+
+export function MoonIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M19 15.2A7.5 7.5 0 0 1 8.8 5a7.5 7.5 0 1 0 10.2 10.2Z"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
+export function SunIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.8" />
+      <path
+        d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-width="1.8"
+      />
     </svg>
   )
 }

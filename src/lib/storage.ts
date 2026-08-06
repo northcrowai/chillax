@@ -1,31 +1,59 @@
-import type { Intensity, PreferencesV1, PresetId, RestoredSession, TimerState } from '../types'
+import { PRESETS as PRESET_DEFINITIONS } from '../data/presets'
+import type {
+  Intensity,
+  PreferencesV2,
+  PresetId,
+  RestoredSession,
+  ThemeMode,
+  TimerState,
+} from '../types'
 import { createTimerState, DEFAULT_DURATION_MS, restoreTimerState } from './timer'
 
-export const STORAGE_KEY = 'chillax:v1'
+export const STORAGE_KEY = 'chillax:v2'
+export const LEGACY_STORAGE_KEY = 'chillax:v1'
 
-export const DEFAULT_PREFERENCES: PreferencesV1 = {
-  version: 1,
+export const DEFAULT_PREFERENCES: PreferencesV2 = {
+  version: 2,
   preset: 'deep-work',
   intensity: 'standard',
   durationMinutes: DEFAULT_DURATION_MS / 60_000,
   volume: 0.55,
   previousVolume: 0.55,
   wakeLockEnabled: false,
+  theme: 'light',
 }
 
-export interface PersistedStateV1 {
+export interface PersistedStateV2 {
+  version: 2
+  preferences: PreferencesV2
+  timer: TimerState
+}
+
+interface LegacyPreferencesV1 {
   version: 1
-  preferences: PreferencesV1
+  preset: 'deep-work' | 'flow' | 'calm-focus'
+  intensity: Intensity
+  durationMinutes: number | null
+  volume: number
+  previousVolume: number
+  wakeLockEnabled: boolean
+}
+
+interface LegacyPersistedStateV1 {
+  version: 1
+  preferences: LegacyPreferencesV1
   timer: TimerState
 }
 
 export interface LoadedStoredState {
-  preferences: PreferencesV1
+  preferences: PreferencesV2
   session: RestoredSession
 }
 
-const PRESETS: ReadonlySet<PresetId> = new Set(['deep-work', 'flow', 'calm-focus'])
+const PRESETS: ReadonlySet<PresetId> = new Set(PRESET_DEFINITIONS.map((preset) => preset.id))
+const LEGACY_PRESETS = new Set(['deep-work', 'flow', 'calm-focus'])
 const INTENSITIES: ReadonlySet<Intensity> = new Set(['soft', 'standard', 'strong'])
+const THEMES: ReadonlySet<ThemeMode> = new Set(['light', 'dark'])
 const TIMER_STATUSES = new Set(['idle', 'running', 'paused', 'completed'])
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -40,23 +68,33 @@ const isNonNegativeNumber = (value: unknown): value is number =>
 const isNullableNonNegativeNumber = (value: unknown): value is number | null =>
   value === null || isNonNegativeNumber(value)
 
-export function isPreferencesV1(value: unknown): value is PreferencesV1 {
-  if (!isObject(value)) {
-    return false
-  }
+const hasValidPreferenceFields = (value: Record<string, unknown>): boolean =>
+  INTENSITIES.has(value.intensity as Intensity)
+  && (value.durationMinutes === null
+    || (isFiniteNumber(value.durationMinutes) && value.durationMinutes > 0))
+  && isFiniteNumber(value.volume)
+  && value.volume >= 0
+  && value.volume <= 1
+  && isFiniteNumber(value.previousVolume)
+  && value.previousVolume >= 0
+  && value.previousVolume <= 1
+  && typeof value.wakeLockEnabled === 'boolean'
+
+export function isPreferencesV2(value: unknown): value is PreferencesV2 {
+  if (!isObject(value)) return false
+
+  return value.version === 2
+    && PRESETS.has(value.preset as PresetId)
+    && THEMES.has(value.theme as ThemeMode)
+    && hasValidPreferenceFields(value)
+}
+
+const isLegacyPreferencesV1 = (value: unknown): value is LegacyPreferencesV1 => {
+  if (!isObject(value)) return false
 
   return value.version === 1
-    && PRESETS.has(value.preset as PresetId)
-    && INTENSITIES.has(value.intensity as Intensity)
-    && (value.durationMinutes === null
-      || (isFiniteNumber(value.durationMinutes) && value.durationMinutes > 0))
-    && isFiniteNumber(value.volume)
-    && value.volume >= 0
-    && value.volume <= 1
-    && isFiniteNumber(value.previousVolume)
-    && value.previousVolume >= 0
-    && value.previousVolume <= 1
-    && typeof value.wakeLockEnabled === 'boolean'
+    && LEGACY_PRESETS.has(String(value.preset))
+    && hasValidPreferenceFields(value)
 }
 
 export function isTimerState(value: unknown): value is TimerState {
@@ -99,9 +137,7 @@ export function isTimerState(value: unknown): value is TimerState {
     return false
   }
 
-  if (value.remainingWhenPausedMs > value.durationMs) {
-    return false
-  }
+  if (value.remainingWhenPausedMs > value.durationMs) return false
 
   if (value.status === 'idle') {
     return value.elapsedBeforeStartMs === 0
@@ -116,10 +152,16 @@ export function isTimerState(value: unknown): value is TimerState {
   return value.remainingWhenPausedMs > 0
 }
 
-const isPersistedStateV1 = (value: unknown): value is PersistedStateV1 =>
+const isPersistedStateV2 = (value: unknown): value is PersistedStateV2 =>
+  isObject(value)
+  && value.version === 2
+  && isPreferencesV2(value.preferences)
+  && isTimerState(value.timer)
+
+const isLegacyPersistedStateV1 = (value: unknown): value is LegacyPersistedStateV1 =>
   isObject(value)
   && value.version === 1
-  && isPreferencesV1(value.preferences)
+  && isLegacyPreferencesV1(value.preferences)
   && isTimerState(value.timer)
 
 const getBrowserStorage = (): Storage | null => {
@@ -130,27 +172,38 @@ const getBrowserStorage = (): Storage | null => {
   }
 }
 
-const readRawState = (storage: Storage | null): PersistedStateV1 | null => {
-  if (!storage) {
-    return null
-  }
-
+const readJson = (storage: Storage, key: string): unknown => {
   try {
-    const serialized = storage.getItem(STORAGE_KEY)
-    if (!serialized) {
-      return null
-    }
-
-    const parsed: unknown = JSON.parse(serialized)
-    return isPersistedStateV1(parsed) ? parsed : null
+    const serialized = storage.getItem(key)
+    return serialized ? JSON.parse(serialized) as unknown : null
   } catch {
     return null
   }
 }
 
-export function createDefaultPersistedState(): PersistedStateV1 {
+const migrateLegacyState = (legacy: LegacyPersistedStateV1): PersistedStateV2 => ({
+  version: 2,
+  preferences: {
+    ...legacy.preferences,
+    version: 2,
+    theme: 'light',
+  },
+  timer: { ...legacy.timer },
+})
+
+const readRawState = (storage: Storage | null): PersistedStateV2 | null => {
+  if (!storage) return null
+
+  const current = readJson(storage, STORAGE_KEY)
+  if (isPersistedStateV2(current)) return current
+
+  const legacy = readJson(storage, LEGACY_STORAGE_KEY)
+  return isLegacyPersistedStateV1(legacy) ? migrateLegacyState(legacy) : null
+}
+
+export function createDefaultPersistedState(): PersistedStateV2 {
   return {
-    version: 1,
+    version: 2,
     preferences: { ...DEFAULT_PREFERENCES },
     timer: createTimerState(),
   }
@@ -170,7 +223,7 @@ export function loadStoredState(
 
 export function loadPreferences(
   storage: Storage | null = getBrowserStorage(),
-): PreferencesV1 {
+): PreferencesV2 {
   return loadStoredState(storage).preferences
 }
 
@@ -181,16 +234,12 @@ export function loadTimerSession(
   return loadStoredState(storage, now).session
 }
 
-const writeState = (state: PersistedStateV1, storage: Storage | null): boolean => {
-  if (!storage || !isPersistedStateV1(state)) {
-    return false
-  }
+const writeState = (state: PersistedStateV2, storage: Storage | null): boolean => {
+  if (!storage || !isPersistedStateV2(state)) return false
 
   try {
     const serialized = JSON.stringify(state)
-    if (storage.getItem(STORAGE_KEY) === serialized) {
-      return false
-    }
+    if (storage.getItem(STORAGE_KEY) === serialized) return false
 
     storage.setItem(STORAGE_KEY, serialized)
     return true
@@ -200,12 +249,10 @@ const writeState = (state: PersistedStateV1, storage: Storage | null): boolean =
 }
 
 export function savePreferences(
-  preferences: PreferencesV1,
+  preferences: PreferencesV2,
   storage: Storage | null = getBrowserStorage(),
 ): boolean {
-  if (!isPreferencesV1(preferences)) {
-    return false
-  }
+  if (!isPreferencesV2(preferences)) return false
 
   const current = readRawState(storage) ?? createDefaultPersistedState()
   return writeState({ ...current, preferences: { ...preferences } }, storage)
@@ -215,25 +262,21 @@ export function saveTimerState(
   timer: TimerState,
   storage: Storage | null = getBrowserStorage(),
 ): boolean {
-  if (!isTimerState(timer)) {
-    return false
-  }
+  if (!isTimerState(timer)) return false
 
   const current = readRawState(storage) ?? createDefaultPersistedState()
   return writeState({ ...current, timer: { ...timer } }, storage)
 }
 
 export function clearStoredState(storage: Storage | null = getBrowserStorage()): boolean {
-  if (!storage) {
-    return false
-  }
+  if (!storage) return false
 
   try {
-    if (storage.getItem(STORAGE_KEY) === null) {
-      return false
-    }
+    const hadCurrent = storage.getItem(STORAGE_KEY) !== null
+    const hadLegacy = storage.getItem(LEGACY_STORAGE_KEY) !== null
     storage.removeItem(STORAGE_KEY)
-    return true
+    storage.removeItem(LEGACY_STORAGE_KEY)
+    return hadCurrent || hadLegacy
   } catch {
     return false
   }

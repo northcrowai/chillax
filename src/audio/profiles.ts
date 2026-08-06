@@ -1,4 +1,4 @@
-import type { Intensity, PresetId } from '../types'
+import type { Intensity, ProceduralPresetId } from '../types'
 import { seedFromString } from './prng'
 
 export interface NoiseProfile {
@@ -10,7 +10,7 @@ export interface NoiseProfile {
 }
 
 export interface AudioProfile {
-  readonly preset: PresetId
+  readonly preset: ProceduralPresetId
   readonly intensity: Intensity
   readonly noise: NoiseProfile
   readonly brightnessHz: number
@@ -37,7 +37,7 @@ interface IntensityProfile {
   readonly brightness: number
 }
 
-const PRESETS: Readonly<Record<PresetId, PresetProfile>> = {
+const PRESETS: Readonly<Record<ProceduralPresetId, PresetProfile>> = {
   'deep-work': {
     brownGain: 0.17,
     pinkGain: 0.08,
@@ -85,7 +85,7 @@ const round = (value: number): number => Math.round(value * 100_000) / 100_000
  * Resolves a deterministic sound profile. Intensity only changes layer density
  * and spectral brightness; chord and slow motion rates remain unchanged.
  */
-export function getAudioProfile(preset: PresetId, intensity: Intensity): AudioProfile {
+export function getAudioProfile(preset: ProceduralPresetId, intensity: Intensity): AudioProfile {
   const base = PRESETS[preset]
   const strength = INTENSITIES[intensity]
 

@@ -1,6 +1,21 @@
-export type PresetId = 'deep-work' | 'flow' | 'calm-focus'
+export type ProceduralPresetId = 'deep-work' | 'flow' | 'calm-focus'
+
+export type RecordedPresetId =
+  | 'rain-light'
+  | 'rain-soft'
+  | 'rain-steady'
+  | 'rain-full'
+  | 'rain-gutter'
+  | 'forest-ambience'
+  | 'forest-morning'
+  | 'fireplace'
+  | 'wind'
+
+export type PresetId = ProceduralPresetId | RecordedPresetId
 
 export type Intensity = 'soft' | 'standard' | 'strong'
+
+export type ThemeMode = 'light' | 'dark'
 
 export type TimerMode = 'countdown' | 'endless'
 
@@ -13,14 +28,15 @@ export interface DurationOption {
   minutes: number | null
 }
 
-export interface PreferencesV1 {
-  version: 1
+export interface PreferencesV2 {
+  version: 2
   preset: PresetId
   intensity: Intensity
   durationMinutes: number | null
   volume: number
   previousVolume: number
   wakeLockEnabled: boolean
+  theme: ThemeMode
 }
 
 export interface TimerState {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createTimerState, startTimer } from './timer'
 import {
   DEFAULT_PREFERENCES,
+  LEGACY_STORAGE_KEY,
   STORAGE_KEY,
   clearStoredState,
   createDefaultPersistedState,
@@ -95,6 +96,36 @@ describe('versioned local storage', () => {
     expect(loaded.session.state).toEqual(timer)
   })
 
+  it('migrates v1 preferences without losing the saved timer', () => {
+    const storage = new CountingStorage()
+    const timer = createTimerState('countdown', 25 * MINUTE)
+    storage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      preferences: {
+        version: 1,
+        preset: 'flow',
+        intensity: 'strong',
+        durationMinutes: 25,
+        volume: 0.4,
+        previousVolume: 0.4,
+        wakeLockEnabled: true,
+      },
+      timer,
+    }))
+
+    const loaded = loadStoredState(storage, START_TIME)
+    expect(loaded.preferences).toMatchObject({
+      version: 2,
+      preset: 'flow',
+      intensity: 'strong',
+      theme: 'light',
+    })
+    expect(loaded.session.state).toEqual(timer)
+
+    expect(savePreferences({ ...loaded.preferences, preset: 'fireplace' }, storage)).toBe(true)
+    expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}').preferences.preset).toBe('fireplace')
+  })
+
   it('restores a saved running session as paused when time remains', () => {
     const storage = new CountingStorage()
     const running = startTimer(createTimerState('countdown', 25 * MINUTE), START_TIME)
@@ -130,5 +161,9 @@ describe('versioned local storage', () => {
     saveTimerState(createTimerState(), storage)
     expect(clearStoredState(storage)).toBe(true)
     expect(storage.getItem(STORAGE_KEY)).toBeNull()
+
+    storage.setItem(LEGACY_STORAGE_KEY, '{}')
+    expect(clearStoredState(storage)).toBe(true)
+    expect(storage.getItem(LEGACY_STORAGE_KEY)).toBeNull()
   })
 })

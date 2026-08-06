@@ -51,8 +51,8 @@ test('supports keyboard playback, mute, settings, and reset', async ({ page }) =
 
   await page.getByRole('button', { name: 'Pause focus session' }).click()
   await page.getByRole('button', { name: 'Open settings' }).click()
-  await expect(page.getByRole('dialog', { name: 'Keep it simple.' })).toBeVisible()
-  await expect(page.getByText(/no account, analytics, or remote data storage/i)).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Make it yours.' })).toBeVisible()
+  await expect(page.getByText(/no account, analytics, cookies/i)).toBeVisible()
   await page.getByRole('button', { name: 'Restore default settings' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByLabel('50:00 remaining')).toBeVisible()
@@ -93,7 +93,7 @@ test('keeps settings keyboard-contained and scrollable on a short screen', async
   const settingsButton = page.getByRole('button', { name: 'Open settings' })
   await settingsButton.click()
 
-  const dialog = page.getByRole('dialog', { name: 'Keep it simple.' })
+  const dialog = page.getByRole('dialog', { name: 'Make it yours.' })
   await expect(dialog).toBeVisible()
   const bounds = await dialog.boundingBox()
   expect(bounds).not.toBeNull()
@@ -110,6 +110,43 @@ test('keeps settings keyboard-contained and scrollable on a short screen', async
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(settingsButton).toBeFocused()
+})
+
+test('streams recorded loops on demand and crossfades without stopping the timer', async ({ page }) => {
+  await page.getByRole('tab', { name: /Nature/ }).click()
+  await page.getByRole('button', { name: /Fireside:/ }).click()
+
+  const fireplaceResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/audio/ambient/fireplace.ogg'),
+  )
+  await page.getByRole('button', { name: 'Start focus session' }).click()
+  expect([200, 206]).toContain((await fireplaceResponse).status())
+  await expect(page.getByText('Streamed on demand', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+
+  const rainResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/audio/ambient/rain-light.ogg'),
+  )
+  await page.getByRole('button', { name: /Light Rain:/ }).click()
+  expect([200, 206]).toContain((await rainResponse).status())
+  await expect(page).toHaveTitle(/Light Rain · Chillax/)
+  await expect(page.getByText('Focus session in progress', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause focus session' }).click()
+})
+
+test('persists dark mode and keeps the mobile transport in reach', async ({ page }) => {
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const startButton = page.getByRole('button', { name: 'Start focus session' })
+  const bounds = await startButton.boundingBox()
+  expect(bounds).not.toBeNull()
+  expect(bounds!.y).toBeGreaterThanOrEqual(0)
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 })
 
 test('does not contact third-party services', async ({ page }) => {

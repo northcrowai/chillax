@@ -47,6 +47,61 @@ class MockAudioNode {
   }
 }
 
+class MockMediaElementAudioSourceNode extends MockAudioNode {
+  constructor(readonly mediaElement: MockHTMLAudioElement) {
+    super()
+  }
+}
+
+class MockHTMLAudioElement {
+  static readonly instances: MockHTMLAudioElement[] = []
+  static rejectNextPlay = false
+
+  autoplay = false
+  loop = false
+  preload = 'none'
+  src = ''
+  volume = 1
+  paused = true
+  readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>()
+  readonly pause = vi.fn(() => {
+    this.paused = true
+  })
+  readonly load = vi.fn()
+  readonly removeAttribute = vi.fn((name: string) => {
+    if (name === 'src') this.src = ''
+  })
+  readonly play = vi.fn(async () => {
+    if (MockHTMLAudioElement.rejectNextPlay) {
+      MockHTMLAudioElement.rejectNextPlay = false
+      throw new Error('network unavailable')
+    }
+    this.paused = false
+  })
+
+  constructor() {
+    MockHTMLAudioElement.instances.push(this)
+  }
+
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    const listeners = this.listeners.get(type) ?? new Set<EventListenerOrEventListenerObject>()
+    listeners.add(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+    this.listeners.get(type)?.delete(listener)
+  }
+
+  emitError(): void {
+    const event = new Event('error')
+    this.listeners.get('error')?.forEach((listener) => {
+      if (typeof listener === 'function') listener(event)
+      else listener.handleEvent(event)
+    })
+  }
+}
+
 class MockGainNode extends MockAudioNode {
   readonly gain = new MockAudioParam()
 }
@@ -92,6 +147,8 @@ class MockAudioContext {
   currentTime = 10
   readonly destination = new MockAudioNode()
   readonly gains: MockGainNode[] = []
+  readonly filters: MockBiquadFilterNode[] = []
+  readonly mediaSources: MockMediaElementAudioSourceNode[] = []
   readonly oscillators: MockOscillatorNode[] = []
   readonly audioWorklet = { addModule: vi.fn(async (_url: string) => undefined) }
 
@@ -110,7 +167,15 @@ class MockAudioContext {
   }
 
   createBiquadFilter(): MockBiquadFilterNode {
-    return new MockBiquadFilterNode()
+    const node = new MockBiquadFilterNode()
+    this.filters.push(node)
+    return node
+  }
+
+  createMediaElementSource(element: MockHTMLAudioElement): MockMediaElementAudioSourceNode {
+    const node = new MockMediaElementAudioSourceNode(element)
+    this.mediaSources.push(node)
+    return node
   }
 
   createStereoPanner(): MockStereoPannerNode {
@@ -173,8 +238,11 @@ describe('FocusAudioEngine', () => {
     vi.useFakeTimers()
     MockAudioContext.instances.length = 0
     MockAudioWorkletNode.instances.length = 0
+    MockHTMLAudioElement.instances.length = 0
+    MockHTMLAudioElement.rejectNextPlay = false
     vi.stubGlobal('AudioContext', MockAudioContext)
     vi.stubGlobal('AudioWorkletNode', MockAudioWorkletNode)
+    vi.stubGlobal('Audio', MockHTMLAudioElement)
   })
 
   afterEach(() => {
@@ -201,6 +269,159 @@ describe('FocusAudioEngine', () => {
     const dispose = engine.dispose()
     await vi.advanceTimersByTimeAsync(300)
     await dispose
+  })
+
+  it('streams a same-origin recorded loop through the existing safe output graph', async () => {
+    const engine = new FocusAudioEngine()
+
+    await engine.prepare()
+    await engine.start('rain-light', 'strong', 2)
+
+    const context = MockAudioContext.instances[0]
+    const media = MockHTMLAudioElement.instances[0]
+    expect(MockAudioContext.instances).toHaveLength(1)
+    expect(MockAudioWorkletNode.instances).toHaveLength(0)
+    expect(context.mediaSources).toHaveLength(1)
+    expect(media).toMatchObject({
+      autoplay: false,
+      loop: true,
+      paused: false,
+      preload: 'metadata',
+      src: '/audio/ambient/rain-light.ogg',
+      volume: 1,
+    })
+    expect(media.play).toHaveBeenCalledTimes(1)
+    expect(context.filters[0].frequency.value).toBe(10_000)
+    expect(context.gains[1].gain.value).toBeLessThanOrEqual(0.68)
+    expect(context.gains[0].gain.ramps.at(-1)?.target).toBe(0.72)
+
+    const dispose = engine.dispose()
+    await vi.advanceTimersByTimeAsync(300)
+    await dispose
+    expect(media.pause).toHaveBeenCalled()
+    expect(media.load).toHaveBeenCalledTimes(1)
+    expect(context.mediaSources[0].disconnected).toBe(true)
+  })
+
+  it('updates recorded intensity in place without restarting or rebuilding media', async () => {
+    const engine = new FocusAudioEngine()
+    await engine.start('rain-soft', 'standard', 0.6)
+
+    const context = MockAudioContext.instances[0]
+    const media = MockHTMLAudioElement.instances[0]
+    await engine.setIntensity('strong')
+
+    expect(MockHTMLAudioElement.instances).toHaveLength(1)
+    expect(context.mediaSources).toHaveLength(1)
+    expect(media.play).toHaveBeenCalledTimes(1)
+    expect(context.filters[0].frequency.ramps.at(-1)?.target).toBe(10_000)
+    expect(context.gains[1].gain.ramps.at(-1)?.target).toBe(0.68)
+    expect(engine.getState().intensity).toBe('strong')
+
+    const dispose = engine.dispose()
+    await vi.advanceTimersByTimeAsync(300)
+    await dispose
+  })
+
+  it('crossfades from recorded audio and releases the retired media after two seconds', async () => {
+    const engine = new FocusAudioEngine()
+    await engine.start('forest-ambience', 'standard', 0.6)
+
+    const context = MockAudioContext.instances[0]
+    const media = MockHTMLAudioElement.instances[0]
+    const sourceNode = context.mediaSources[0]
+    await engine.setPreset('deep-work', 'standard')
+
+    expect(MockAudioContext.instances).toHaveLength(1)
+    expect(MockAudioWorkletNode.instances).toHaveLength(1)
+    expect(media.pause).not.toHaveBeenCalled()
+    expect(sourceNode.disconnected).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(2_100)
+    expect(media.pause).toHaveBeenCalled()
+    expect(media.src).toBe('')
+    expect(media.load).toHaveBeenCalledTimes(1)
+    expect(sourceNode.disconnected).toBe(true)
+    expect(engine.getState()).toMatchObject({ preset: 'deep-work', isPlaying: true })
+
+    const dispose = engine.dispose()
+    await vi.advanceTimersByTimeAsync(300)
+    await dispose
+  })
+
+  it('keeps the existing sound when a newly selected recording cannot start', async () => {
+    const engine = new FocusAudioEngine()
+    await engine.start('deep-work', 'standard', 0.6)
+    const existingProcessor = MockAudioWorkletNode.instances[0]
+    MockHTMLAudioElement.rejectNextPlay = true
+
+    await expect(engine.setPreset('rain-light', 'standard')).rejects.toThrow(
+      /could not start.*network unavailable/i,
+    )
+
+    const failedMedia = MockHTMLAudioElement.instances[0]
+    expect(MockAudioContext.instances).toHaveLength(1)
+    expect(existingProcessor.disconnected).toBe(false)
+    expect(failedMedia.pause).toHaveBeenCalled()
+    expect(failedMedia.src).toBe('')
+    expect(engine.getState()).toMatchObject({
+      preset: 'deep-work',
+      intensity: 'standard',
+      isPlaying: true,
+    })
+
+    const dispose = engine.dispose()
+    await vi.advanceTimersByTimeAsync(300)
+    await dispose
+  })
+
+  it('returns to the fading sound if a new recording errors during its crossfade', async () => {
+    const engine = new FocusAudioEngine()
+    await engine.start('deep-work', 'standard', 0.6)
+    const existingProcessor = MockAudioWorkletNode.instances[0]
+    await engine.setPreset('rain-full', 'standard')
+
+    const failedMedia = MockHTMLAudioElement.instances[0]
+    failedMedia.emitError()
+    await flushOperations()
+
+    expect(existingProcessor.disconnected).toBe(false)
+    expect(engine.getState()).toMatchObject({ preset: 'deep-work', isPlaying: true })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(failedMedia.pause).toHaveBeenCalled()
+    expect(failedMedia.src).toBe('')
+
+    const dispose = engine.dispose()
+    await vi.advanceTimersByTimeAsync(300)
+    await dispose
+  })
+
+  it('pauses, resumes, stops, and disposes recorded media cleanly', async () => {
+    const engine = new FocusAudioEngine()
+    await engine.start('fireplace', 'soft', 0.6)
+    const context = MockAudioContext.instances[0]
+    const media = MockHTMLAudioElement.instances[0]
+
+    const pause = engine.pause()
+    await vi.advanceTimersByTimeAsync(300)
+    await pause
+    expect(media.pause).toHaveBeenCalledTimes(1)
+    expect(context.state).toBe('suspended')
+
+    await engine.resume()
+    expect(media.play).toHaveBeenCalledTimes(2)
+    expect(context.state).toBe('running')
+
+    const stop = engine.stop()
+    await vi.advanceTimersByTimeAsync(300)
+    await stop
+    expect(media.pause.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(media.load).toHaveBeenCalledTimes(1)
+    expect(context.mediaSources[0].disconnected).toBe(true)
+    expect(context.state).toBe('suspended')
+
+    await engine.dispose()
+    expect(context.state).toBe('closed')
   })
 
   it('crossfades deterministic profiles and disposes the retired deck', async () => {

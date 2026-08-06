@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks'
+import type { ThemeMode } from '../types'
 import { CloseIcon } from './Icons'
 
 interface SettingsDialogProps {
@@ -7,10 +8,21 @@ interface SettingsDialogProps {
   wakeLockSupported: boolean
   isStandalone: boolean
   offlineReady: boolean
+  theme: ThemeMode
   onClose: () => void
   onResetPreferences: () => void
+  onThemeChange: (theme: ThemeMode) => void
   onWakeLockChange: (enabled: boolean) => void
 }
+
+const SOUND_CREDITS = [
+  { name: 'Rain loops', creator: 'Ylmir', license: 'CC0', url: 'https://opengameart.org/content/rain-loopable' },
+  { name: 'Rainy roof', creator: 'Ogrebane', license: 'CC0', url: 'https://opengameart.org/content/rain-gutter-loop' },
+  { name: 'Forest Hush', creator: 'TinyWorlds', license: 'CC0', url: 'https://opengameart.org/node/23888' },
+  { name: 'Forest Morning', creator: 'nille', license: 'Public domain', url: 'https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg' },
+  { name: 'Fireside', creator: 'inchadney', license: 'CC0', url: 'https://freesound.org/people/inchadney/sounds/132534/' },
+  { name: 'Open Wind', creator: 'felix.blume', license: 'CC0', url: 'https://freesound.org/people/felix.blume/sounds/139337/' },
+] as const
 
 export function SettingsDialog({
   open,
@@ -18,8 +30,10 @@ export function SettingsDialog({
   wakeLockSupported,
   isStandalone,
   offlineReady,
+  theme,
   onClose,
   onResetPreferences,
+  onThemeChange,
   onWakeLockChange,
 }: SettingsDialogProps) {
   const dialogRef = useRef<HTMLElement>(null)
@@ -39,7 +53,7 @@ export function SettingsDialog({
 
       const focusableElements = Array.from(
         dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], summary, [tabindex]:not([tabindex="-1"])',
         ) ?? [],
       )
       const firstElement = focusableElements[0]
@@ -80,7 +94,7 @@ export function SettingsDialog({
         <header class="settings-dialog__header">
           <div>
             <span class="eyebrow">Preferences</span>
-            <h2 id="settings-title">Keep it simple.</h2>
+            <h2 id="settings-title">Make it yours.</h2>
           </div>
           <button
             aria-label="Close settings"
@@ -92,6 +106,29 @@ export function SettingsDialog({
             <CloseIcon />
           </button>
         </header>
+
+        <div class="settings-row settings-row--theme">
+          <div>
+            <strong>Appearance</strong>
+            <p>Switch the whole focus space between light and dark.</p>
+          </div>
+          <div aria-label="Appearance" class="theme-choice">
+            <button
+              aria-pressed={theme === 'light'}
+              onClick={() => onThemeChange('light')}
+              type="button"
+            >
+              Light
+            </button>
+            <button
+              aria-pressed={theme === 'dark'}
+              onClick={() => onThemeChange('dark')}
+              type="button"
+            >
+              Dark
+            </button>
+          </div>
+        </div>
 
         <div class="settings-row">
           <div>
@@ -114,16 +151,35 @@ export function SettingsDialog({
           <div>
             <strong>App status</strong>
             <p>
-              {isStandalone ? 'Installed as a Windows app' : 'Running in your browser'} ·{' '}
-              {offlineReady ? 'available offline' : 'offline setup pending'}
+              {isStandalone ? 'Installed as a Windows app' : 'Running in your browser'} /{' '}
+              {offlineReady ? 'generated tones available offline' : 'offline setup pending'}
             </p>
           </div>
           <span class={`status-dot${offlineReady ? ' is-ready' : ''}`} aria-hidden="true" />
         </div>
 
+        <details class="sound-credits">
+          <summary>
+            <span>
+              <strong>Open sound credits</strong>
+              <small>9 recordings / 13.3 MB / loaded only when selected</small>
+            </span>
+          </summary>
+          <ul>
+            {SOUND_CREDITS.map((credit) => (
+              <li key={credit.name}>
+                <a href={credit.url} rel="noreferrer" target="_blank">
+                  <span>{credit.name}</span>
+                  <small>{credit.creator} / {credit.license}</small>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+
         <div class="privacy-note">
           <strong>Private by design</strong>
-          <p>Your sound choices and timer settings stay in this browser. Chillax has no account, analytics, or remote data storage.</p>
+          <p>Your settings stay in this browser. Nature recordings stream from this same app; Chillax has no account, analytics, cookies, or remote settings storage.</p>
         </div>
 
         <button class="text-action text-action--danger" onClick={onResetPreferences} type="button">

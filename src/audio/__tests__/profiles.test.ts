@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Intensity, PresetId } from '../../types'
+import type { Intensity, ProceduralPresetId } from '../../types'
 import { getAudioProfile } from '../profiles'
 
-const presets: PresetId[] = ['deep-work', 'flow', 'calm-focus']
+const presets: ProceduralPresetId[] = ['deep-work', 'flow', 'calm-focus']
 const intensities: Intensity[] = ['soft', 'standard', 'strong']
 
 describe('getAudioProfile', () => {

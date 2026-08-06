@@ -76,6 +76,24 @@ describe('Chillax app', () => {
     })
   })
 
+  it('offers recorded nature loops and switches themes', async () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('tab', { name: /Nature/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Fireside:/ }))
+    expect(screen.getByRole('button', { name: /Fireside:/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Streamed on demand')).toBeInTheDocument()
+    expect(audioMocks.setPreset).toHaveBeenCalledWith('fireplace', 'standard')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
+      expect(saved.preferences).toMatchObject({ preset: 'fireplace', theme: 'dark' })
+    })
+  })
+
   it('starts, pauses, and resets a focus session only after interaction', async () => {
     render(<App />)
 
@@ -145,8 +163,8 @@ describe('Chillax app', () => {
     fireEvent.click(screen.getByRole('button', { name: /Flow/ }))
     const settingsButton = screen.getByRole('button', { name: 'Open settings' })
     fireEvent.click(settingsButton)
-    expect(screen.getByRole('dialog', { name: 'Keep it simple.' })).toBeInTheDocument()
-    expect(screen.getByText(/no account, analytics, or remote data storage/i)).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Make it yours.' })).toBeInTheDocument()
+    expect(screen.getByText(/no account, analytics, cookies/i)).toBeInTheDocument()
 
     const closeButton = within(screen.getByRole('dialog')).getByRole('button', { name: 'Close settings' })
     const resetButton = screen.getByRole('button', { name: 'Restore default settings' })

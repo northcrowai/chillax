@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { AmbientVisual } from './components/AmbientVisual'
 import { Brand } from './components/Brand'
 import { DurationSelector } from './components/DurationSelector'
-import { InstallIcon, SettingsIcon } from './components/Icons'
+import { InstallIcon, MoonIcon, SettingsIcon, SunIcon } from './components/Icons'
 import { IntensitySelector } from './components/IntensitySelector'
 import { PlaybackControls } from './components/PlaybackControls'
 import { PresetSelector } from './components/PresetSelector'
@@ -21,11 +21,11 @@ import {
   savePreferences,
 } from './lib/storage'
 import { isChillaxOfflineReady, registerChillaxServiceWorker } from './pwa'
-import type { Intensity, PreferencesV1, PresetId } from './types'
+import type { Intensity, PreferencesV2, PresetId, ThemeMode } from './types'
 
 const MINUTE_MS = 60_000
 const QUICK_DURATIONS = new Set(DURATION_OPTIONS.map((option) => option.minutes))
-const FOOTER_FACTS = ['Original audio', 'On-device settings', 'Offline ready'] as const
+const FOOTER_FACTS = ['12 soundscapes', '13.3 MB open audio pack', 'No analytics'] as const
 
 const clampVolume = (volume: number) => Math.max(0, Math.min(0.75, volume))
 
@@ -50,7 +50,7 @@ const isTypingTarget = (target: EventTarget | null) => {
 
 export function App() {
   const [initialState] = useState(loadStoredState)
-  const [preferences, setPreferences] = useState<PreferencesV1>(initialState.preferences)
+  const [preferences, setPreferences] = useState<PreferencesV2>(initialState.preferences)
   const [customMinutes, setCustomMinutes] = useState(() => getCustomDuration(initialState.preferences.durationMinutes))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [offlineReady, setOfflineReady] = useState(false)
@@ -118,6 +118,16 @@ export function App() {
   }, [preferences])
 
   useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme
+    document.documentElement.style.colorScheme = preferences.theme
+    const themeColor = preferences.theme === 'dark' ? '#16071b' : '#f7f3ed'
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute(
+      'content',
+      themeColor,
+    )
+  }, [preferences.theme])
+
+  useEffect(() => {
     let active = true
     void isChillaxOfflineReady().then((isReady) => {
       if (active && isReady) setOfflineReady(true)
@@ -179,9 +189,9 @@ export function App() {
     void stopAudio()
   }, [preferences.durationMinutes, resetTimer, stopAudio])
 
-  const updatePreference = useCallback(<Key extends keyof PreferencesV1>(
+  const updatePreference = useCallback(<Key extends keyof PreferencesV2>(
     key: Key,
-    value: PreferencesV1[Key],
+    value: PreferencesV2[Key],
   ) => {
     setPreferences((current) => ({ ...current, [key]: value }))
   }, [])
@@ -243,6 +253,14 @@ export function App() {
     updatePreference('wakeLockEnabled', enabled)
   }, [updatePreference])
 
+  const handleThemeChange = useCallback((theme: ThemeMode) => {
+    updatePreference('theme', theme)
+  }, [updatePreference])
+
+  const handleToggleTheme = useCallback(() => {
+    handleThemeChange(preferences.theme === 'light' ? 'dark' : 'light')
+  }, [handleThemeChange, preferences.theme])
+
   const handleUpdate = useCallback(() => {
     if (sessionIsRunning) return
     void updateServiceWorkerRef.current?.(true)
@@ -290,7 +308,7 @@ export function App() {
   }, [handleReset, handleTogglePlayback, preset.name, preset.sound, sessionIsRunning])
 
   return (
-    <div class="app" data-preset={preferences.preset}>
+    <div class="app" data-preset={preferences.preset} data-theme={preferences.theme}>
       <div
         aria-hidden={settingsOpen || undefined}
         class="app-shell"
@@ -306,6 +324,14 @@ export function App() {
               </button>
             ) : null}
             <button
+              aria-label={`Switch to ${preferences.theme === 'light' ? 'dark' : 'light'} theme`}
+              class="icon-button"
+              onClick={handleToggleTheme}
+              type="button"
+            >
+              {preferences.theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+            <button
               aria-label="Open settings"
               class="icon-button"
               onClick={openSettings}
@@ -318,68 +344,86 @@ export function App() {
         </header>
 
         <main class="app-main">
-          <section class="intro" aria-labelledby="page-title">
-            <span class="eyebrow">Your quiet corner</span>
-            <h1 id="page-title">Find your quiet.</h1>
-            <p>Choose a soundscape, set your time, and let everything else fall away.</p>
-          </section>
-
-          <section class="focus-card" aria-label="Focus session player">
-            <PresetSelector
-              disabled={audioIsBusy}
-              onChange={handlePresetChange}
-              value={preferences.preset}
-            />
-
-            <div class="focus-card__body">
-              <div class="visual-column">
-                <AmbientVisual isPlaying={sessionIsRunning} preset={preferences.preset} />
+          <section class="focus-stage" aria-label="Focus session player">
+            <div class="visual-panel">
+              <div class="visual-panel__topline">
+                <span>{preset.source.type === 'procedural' ? 'Live generated' : 'Streamed on demand'}</span>
+                <span class={`play-state${sessionIsRunning ? ' is-active' : ''}`}>
+                  <i aria-hidden="true" />
+                  {sessionIsRunning ? 'Playing' : 'Ready'}
+                </span>
               </div>
-              <div class="session-column">
-                <TimerDisplay
-                  display={timerDisplay}
-                  mode={timerSnapshot.mode}
-                  presetName={preset.name}
-                  progress={timerSnapshot.progress}
-                  status={timerSnapshot.status}
+              <div class="visual-panel__art">
+                <AmbientVisual
+                  intensity={preferences.intensity}
+                  isPlaying={sessionIsRunning}
+                  preset={preferences.preset}
+                  theme={preferences.theme}
                 />
-                <PlaybackControls
-                  isBusy={audioIsBusy}
-                  onReset={handleReset}
-                  onToggle={() => void handleTogglePlayback()}
-                  status={timerSnapshot.status}
-                />
+              </div>
+              <div class="visual-panel__caption">
+                <span class="eyebrow">Now selected</span>
+                <strong>{preset.name}</strong>
+                <p>{preset.description}</p>
               </div>
             </div>
 
-            <div class="focus-card__controls">
-              <DurationSelector
-                customMinutes={customMinutes}
-                disabled={sessionIsRunning || audioIsBusy}
-                durationMinutes={preferences.durationMinutes}
-                onCustomChange={handleCustomDurationChange}
-                onSelect={handleDurationSelect}
+            <div class="session-panel">
+              <header class="intro" aria-labelledby="page-title">
+                <span class="eyebrow">Your quiet corner</span>
+                <h1 id="page-title">Find your quiet.</h1>
+                <p>Choose an atmosphere, set your time, and let everything else fall away.</p>
+              </header>
+
+              <TimerDisplay
+                display={timerDisplay}
+                mode={timerSnapshot.mode}
+                presetName={preset.name}
+                progress={timerSnapshot.progress}
+                status={timerSnapshot.status}
               />
-              <IntensitySelector
-                disabled={audioIsBusy}
-                onChange={handleIntensityChange}
-                value={preferences.intensity}
+              <PlaybackControls
+                isBusy={audioIsBusy}
+                onReset={handleReset}
+                onToggle={() => void handleTogglePlayback()}
+                status={timerSnapshot.status}
               />
-              <VolumeControl
-                disabled={audioIsBusy}
-                onChange={handleVolumeChange}
-                onToggleMute={handleToggleMute}
-                value={preferences.volume}
-              />
+
+              <div class="focus-controls">
+                <DurationSelector
+                  customMinutes={customMinutes}
+                  disabled={sessionIsRunning || audioIsBusy}
+                  durationMinutes={preferences.durationMinutes}
+                  onCustomChange={handleCustomDurationChange}
+                  onSelect={handleDurationSelect}
+                />
+                <IntensitySelector
+                  disabled={audioIsBusy}
+                  onChange={handleIntensityChange}
+                  value={preferences.intensity}
+                />
+                <VolumeControl
+                  disabled={audioIsBusy}
+                  onChange={handleVolumeChange}
+                  onToggleMute={handleToggleMute}
+                  value={preferences.volume}
+                />
+              </div>
             </div>
           </section>
+
+          <PresetSelector
+            disabled={audioIsBusy}
+            onChange={handlePresetChange}
+            value={preferences.preset}
+          />
         </main>
 
         <footer class="app-footer">
           <div class="app-footer__facts">
             {FOOTER_FACTS.map((fact) => <span key={fact}>{fact}</span>)}
           </div>
-          <span class="keyboard-hint"><kbd>Space</kbd> play · <kbd>M</kbd> mute</span>
+          <span class="keyboard-hint"><kbd>Space</kbd> play / <kbd>M</kbd> mute</span>
         </footer>
       </div>
 
@@ -388,8 +432,10 @@ export function App() {
         offlineReady={offlineReady || pwaInstall.isStandalone}
         onClose={closeSettings}
         onResetPreferences={handleResetPreferences}
+        onThemeChange={handleThemeChange}
         onWakeLockChange={handleWakeLockChange}
         open={settingsOpen}
+        theme={preferences.theme}
         wakeLockEnabled={preferences.wakeLockEnabled}
         wakeLockSupported={wakeLock.isSupported}
       />
