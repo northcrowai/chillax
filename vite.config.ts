@@ -3,6 +3,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  build: {
+    assetsInlineLimit: 0,
+  },
   plugins: [
     preact(),
     VitePWA({
