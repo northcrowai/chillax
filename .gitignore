@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+.vercel/
+playwright-report/
+test-results/
+output/playwright/
+*.log
+.DS_Store
+Thumbs.db
