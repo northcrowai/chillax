@@ -1,12 +1,29 @@
 import { PRESETS as PRESET_DEFINITIONS } from '../data/presets'
 import type {
   Intensity,
+  PomodoroState,
   PreferencesV2,
   PresetId,
+  RestoredPomodoroSession,
   RestoredSession,
+  SessionPlanV1,
   ThemeMode,
   TimerState,
 } from '../types'
+import {
+  createPomodoroState,
+  getPomodoroPhaseDurationMs,
+  isPomodoroConfig,
+  restorePomodoroState,
+} from './pomodoro'
+import {
+  DEFAULT_CUSTOM_DURATION_MINUTES,
+  DEFAULT_SESSION_PLAN,
+  MAX_CUSTOM_DURATION_MINUTES,
+  MIN_CUSTOM_DURATION_MINUTES,
+  createSessionPlan,
+  isSessionPlan,
+} from './session'
 import { createTimerState, DEFAULT_DURATION_MS, restoreTimerState } from './timer'
 
 export const STORAGE_KEY = 'chillax:v2'
@@ -21,6 +38,14 @@ export const DEFAULT_PREFERENCES: PreferencesV2 = {
   previousVolume: 0.55,
   wakeLockEnabled: false,
   theme: 'light',
+}
+
+export interface PersistedStateV3 {
+  version: 3
+  preferences: PreferencesV2
+  timer: TimerState
+  sessionPlan: SessionPlanV1
+  pomodoro: PomodoroState
 }
 
 export interface PersistedStateV2 {
@@ -48,6 +73,8 @@ interface LegacyPersistedStateV1 {
 export interface LoadedStoredState {
   preferences: PreferencesV2
   session: RestoredSession
+  sessionPlan: SessionPlanV1
+  pomodoroSession: RestoredPomodoroSession
 }
 
 const PRESETS: ReadonlySet<PresetId> = new Set(PRESET_DEFINITIONS.map((preset) => preset.id))
@@ -55,6 +82,7 @@ const LEGACY_PRESETS = new Set(['deep-work', 'flow', 'calm-focus'])
 const INTENSITIES: ReadonlySet<Intensity> = new Set(['soft', 'standard', 'strong'])
 const THEMES: ReadonlySet<ThemeMode> = new Set(['light', 'dark'])
 const TIMER_STATUSES = new Set(['idle', 'running', 'paused', 'completed'])
+const POMODORO_PHASES = new Set(['focus', 'short-break', 'long-break'])
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -152,6 +180,43 @@ export function isTimerState(value: unknown): value is TimerState {
   return value.remainingWhenPausedMs > 0
 }
 
+export function isPomodoroState(value: unknown): value is PomodoroState {
+  if (!isObject(value)
+    || value.version !== 1
+    || !isPomodoroConfig(value.config)
+    || !POMODORO_PHASES.has(String(value.phase))
+    || !Number.isSafeInteger(value.completedFocusSessions)
+    || (value.completedFocusSessions as number) < 0
+    || !Number.isSafeInteger(value.focusSessionsInCycle)
+    || (value.focusSessionsInCycle as number) < 0
+    || !isTimerState(value.timer)) {
+    return false
+  }
+
+  const config = value.config
+  const phase = value.phase as PomodoroState['phase']
+  const focusSessionsInCycle = value.focusSessionsInCycle as number
+  const target = config.focusSessionsBeforeLongBreak
+  const phaseHasValidCycleCount = phase === 'focus'
+    ? focusSessionsInCycle < target
+    : phase === 'short-break'
+      ? focusSessionsInCycle > 0 && focusSessionsInCycle < target
+      : focusSessionsInCycle === target
+
+  return phaseHasValidCycleCount
+    && (value.completedFocusSessions as number) >= focusSessionsInCycle
+    && value.timer.mode === 'countdown'
+    && value.timer.durationMs === getPomodoroPhaseDurationMs(config, phase)
+}
+
+const isPersistedStateV3 = (value: unknown): value is PersistedStateV3 =>
+  isObject(value)
+  && value.version === 3
+  && isPreferencesV2(value.preferences)
+  && isTimerState(value.timer)
+  && isSessionPlan(value.sessionPlan)
+  && isPomodoroState(value.pomodoro)
+
 const isPersistedStateV2 = (value: unknown): value is PersistedStateV2 =>
   isObject(value)
   && value.version === 2
@@ -191,21 +256,53 @@ const migrateLegacyState = (legacy: LegacyPersistedStateV1): PersistedStateV2 =>
   timer: { ...legacy.timer },
 })
 
-const readRawState = (storage: Storage | null): PersistedStateV2 | null => {
+const inferSessionPlan = (preferences: PreferencesV2): SessionPlanV1 => {
+  if (preferences.durationMinutes === null) {
+    return createSessionPlan({ choice: 'endless' })
+  }
+
+  if (preferences.durationMinutes === 60) {
+    return createSessionPlan({ choice: 'sixty' })
+  }
+
+  const customDurationMinutes = Number.isInteger(preferences.durationMinutes)
+    ? Math.min(
+        Math.max(preferences.durationMinutes, MIN_CUSTOM_DURATION_MINUTES),
+        MAX_CUSTOM_DURATION_MINUTES,
+      )
+    : DEFAULT_CUSTOM_DURATION_MINUTES
+
+  return createSessionPlan({ choice: 'custom', customDurationMinutes })
+}
+
+const migratePersistedStateV2 = (persisted: PersistedStateV2): PersistedStateV3 => ({
+  version: 3,
+  preferences: { ...persisted.preferences },
+  timer: { ...persisted.timer },
+  sessionPlan: inferSessionPlan(persisted.preferences),
+  pomodoro: createPomodoroState(),
+})
+
+const readRawState = (storage: Storage | null): PersistedStateV3 | null => {
   if (!storage) return null
 
   const current = readJson(storage, STORAGE_KEY)
-  if (isPersistedStateV2(current)) return current
+  if (isPersistedStateV3(current)) return current
+  if (isPersistedStateV2(current)) return migratePersistedStateV2(current)
 
   const legacy = readJson(storage, LEGACY_STORAGE_KEY)
-  return isLegacyPersistedStateV1(legacy) ? migrateLegacyState(legacy) : null
+  return isLegacyPersistedStateV1(legacy)
+    ? migratePersistedStateV2(migrateLegacyState(legacy))
+    : null
 }
 
-export function createDefaultPersistedState(): PersistedStateV2 {
+export function createDefaultPersistedState(): PersistedStateV3 {
   return {
-    version: 2,
+    version: 3,
     preferences: { ...DEFAULT_PREFERENCES },
     timer: createTimerState(),
+    sessionPlan: { ...DEFAULT_SESSION_PLAN },
+    pomodoro: createPomodoroState(),
   }
 }
 
@@ -218,6 +315,12 @@ export function loadStoredState(
   return {
     preferences: { ...persisted.preferences },
     session: restoreTimerState({ ...persisted.timer }, now),
+    sessionPlan: { ...persisted.sessionPlan },
+    pomodoroSession: restorePomodoroState({
+      ...persisted.pomodoro,
+      config: { ...persisted.pomodoro.config },
+      timer: { ...persisted.pomodoro.timer },
+    }, now),
   }
 }
 
@@ -234,8 +337,15 @@ export function loadTimerSession(
   return loadStoredState(storage, now).session
 }
 
-const writeState = (state: PersistedStateV2, storage: Storage | null): boolean => {
-  if (!storage || !isPersistedStateV2(state)) return false
+export function loadPomodoroSession(
+  storage: Storage | null = getBrowserStorage(),
+  now = Date.now(),
+): RestoredPomodoroSession {
+  return loadStoredState(storage, now).pomodoroSession
+}
+
+const writeState = (state: PersistedStateV3, storage: Storage | null): boolean => {
+  if (!storage || !isPersistedStateV3(state)) return false
 
   try {
     const serialized = JSON.stringify(state)
@@ -266,6 +376,33 @@ export function saveTimerState(
 
   const current = readRawState(storage) ?? createDefaultPersistedState()
   return writeState({ ...current, timer: { ...timer } }, storage)
+}
+
+export function saveSessionPlan(
+  sessionPlan: SessionPlanV1,
+  storage: Storage | null = getBrowserStorage(),
+): boolean {
+  if (!isSessionPlan(sessionPlan)) return false
+
+  const current = readRawState(storage) ?? createDefaultPersistedState()
+  return writeState({ ...current, sessionPlan: { ...sessionPlan } }, storage)
+}
+
+export function savePomodoroState(
+  pomodoro: PomodoroState,
+  storage: Storage | null = getBrowserStorage(),
+): boolean {
+  if (!isPomodoroState(pomodoro)) return false
+
+  const current = readRawState(storage) ?? createDefaultPersistedState()
+  return writeState({
+    ...current,
+    pomodoro: {
+      ...pomodoro,
+      config: { ...pomodoro.config },
+      timer: { ...pomodoro.timer },
+    },
+  }, storage)
 }
 
 export function clearStoredState(storage: Storage | null = getBrowserStorage()): boolean {

@@ -6,6 +6,9 @@ interface TimerDisplayProps {
   status: TimerStatus
   presetName: string
   progress: number | null
+  progressLabel?: string
+  sessionLabel?: string
+  statusText?: string
 }
 
 const STATUS_LABELS: Record<TimerStatus, string> = {
@@ -15,7 +18,16 @@ const STATUS_LABELS: Record<TimerStatus, string> = {
   completed: 'Session complete',
 }
 
-export function TimerDisplay({ display, mode, status, presetName, progress }: TimerDisplayProps) {
+export function TimerDisplay({
+  display,
+  mode,
+  status,
+  presetName,
+  progress,
+  progressLabel = 'Session progress',
+  sessionLabel,
+  statusText,
+}: TimerDisplayProps) {
   const normalizedProgress = progress === null ? null : Math.max(0, Math.min(1, progress))
 
   return (
@@ -23,7 +35,7 @@ export function TimerDisplay({ display, mode, status, presetName, progress }: Ti
       <div class="timer-display__meta">
         <span>{presetName}</span>
         <span aria-hidden="true">·</span>
-        <span>{mode === 'endless' ? 'Open session' : 'Timed session'}</span>
+        <span>{sessionLabel ?? (mode === 'endless' ? 'Open session' : 'Timed session')}</span>
       </div>
       <output
         class="timer-display__time"
@@ -33,14 +45,14 @@ export function TimerDisplay({ display, mode, status, presetName, progress }: Ti
       </output>
       {normalizedProgress === null ? null : (
         <progress
-          aria-label="Session progress"
+          aria-label={progressLabel}
           class="timer-display__track"
           max="1"
           value={normalizedProgress}
         />
       )}
       <p class="timer-display__status" aria-live="polite">
-        {STATUS_LABELS[status]}
+        {statusText ?? STATUS_LABELS[status]}
       </p>
     </div>
   )

@@ -43,26 +43,28 @@ describe('Chillax app', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the default focus experience', () => {
+  it('renders the clean 60-minute default experience', () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: 'Find your quiet.' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start focus session' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Standard: Balanced/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByLabelText('50:00 remaining')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '60 minutes' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('60:00 remaining')).toBeInTheDocument()
+    expect(screen.getByText('One uninterrupted hour')).toBeInTheDocument()
   })
 
-  it('changes and persists the selected soundscape, texture, and duration', async () => {
+  it('changes and persists the selected soundscape, texture, and session', async () => {
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Flow/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Flow State:/ }))
     fireEvent.click(screen.getByRole('button', { name: /Strong: Fuller/ }))
-    fireEvent.click(screen.getByRole('button', { name: /25 min/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Infinite' }))
 
-    expect(screen.getByRole('button', { name: /Flow/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Flow State:/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Strong: Fuller/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByLabelText('25:00 remaining')).toBeInTheDocument()
+    expect(screen.getByLabelText('00:00 elapsed')).toBeInTheDocument()
     expect(audioMocks.setPreset).toHaveBeenCalledWith('flow', 'standard')
     expect(audioMocks.setIntensity).toHaveBeenCalledWith('strong')
 
@@ -71,12 +73,13 @@ describe('Chillax app', () => {
       expect(saved.preferences).toMatchObject({
         preset: 'flow',
         intensity: 'strong',
-        durationMinutes: 25,
+        durationMinutes: null,
       })
+      expect(saved.sessionPlan).toMatchObject({ choice: 'endless' })
     })
   })
 
-  it('offers recorded nature loops and switches themes', async () => {
+  it('offers recorded nature and lo-fi loops and switches themes', async () => {
     render(<App />)
 
     fireEvent.click(screen.getByRole('tab', { name: /Nature/ }))
@@ -85,12 +88,17 @@ describe('Chillax app', () => {
     expect(screen.getByText('Streamed on demand')).toBeInTheDocument()
     expect(audioMocks.setPreset).toHaveBeenCalledWith('fireplace', 'standard')
 
+    fireEvent.click(screen.getByRole('tab', { name: /Lo-fi/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Soft Study:/ }))
+    expect(screen.getByRole('button', { name: /Soft Study:/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(audioMocks.setPreset).toHaveBeenCalledWith('lofi-soft-study', 'standard')
+
     fireEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
 
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
-      expect(saved.preferences).toMatchObject({ preset: 'fireplace', theme: 'dark' })
+      expect(saved.preferences).toMatchObject({ preset: 'lofi-soft-study', theme: 'dark' })
     })
   })
 
@@ -110,28 +118,65 @@ describe('Chillax app', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset focus session' }))
     expect(audioMocks.stop).toHaveBeenCalled()
-    expect(screen.getByLabelText('50:00 remaining')).toBeInTheDocument()
+    expect(screen.getByLabelText('60:00 remaining')).toBeInTheDocument()
   })
 
-  it('supports custom duration, volume, mute, and keyboard controls', async () => {
+  it('applies a custom one-off duration and supports volume and keyboard controls', async () => {
     render(<App />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
-    const minutesInput = screen.getByRole('spinbutton', { name: /Minutes/ })
-    fireEvent.input(minutesInput, { target: { value: '1' } })
-    expect(minutesInput).toHaveValue(1)
-    fireEvent.input(minutesInput, { target: { value: '12' } })
-    expect(minutesInput).toHaveValue(12)
+    const dialog = screen.getByRole('dialog', { name: 'Set your rhythm.' })
+    const minutesInput = within(dialog).getByRole('spinbutton', { name: /Session length/ })
     fireEvent.input(minutesInput, { target: { value: '120' } })
     expect(minutesInput).toHaveValue(120)
-    fireEvent.blur(minutesInput)
-    expect(screen.getByLabelText('02:00:00 remaining')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this session' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('120:00 remaining')).toBeInTheDocument()
+    expect(screen.getByText('120 minute custom session')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Mute soundscape' }))
     expect(audioMocks.setVolume).toHaveBeenLastCalledWith(0)
 
     fireEvent.keyDown(window, { code: 'Space', key: ' ' })
     await waitFor(() => expect(audioMocks.start).toHaveBeenCalled())
+  })
+
+  it('configures and persists a Pomodoro cycle', async () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }))
+    const dialog = screen.getByRole('dialog', { name: 'Set your rhythm.' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /Pomodoro/ }))
+    fireEvent.input(within(dialog).getByRole('spinbutton', { name: /Focus session/ }), {
+      target: { value: '30' },
+    })
+    fireEvent.input(within(dialog).getByRole('spinbutton', { name: /Short break/ }), {
+      target: { value: '7' },
+    })
+    fireEvent.input(within(dialog).getByRole('spinbutton', { name: /^Long breakminutes$/ }), {
+      target: { value: '20' },
+    })
+    fireEvent.input(within(dialog).getByRole('spinbutton', { name: /Long break after/ }), {
+      target: { value: '3' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use this session' }))
+
+    expect(screen.getByLabelText('30:00 remaining')).toBeInTheDocument()
+    expect(screen.getByText('Focus 1 of 3')).toBeInTheDocument()
+    expect(screen.getByText('Focus session ready')).toBeInTheDocument()
+    expect(screen.getByText('30 focus / 7 short / 20 long / every 3')).toBeInTheDocument()
+
+    await waitFor(() => {
+      const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
+      expect(saved.sessionPlan).toMatchObject({ choice: 'custom', customMode: 'pomodoro' })
+      expect(saved.pomodoro.config).toEqual({
+        workMinutes: 30,
+        shortBreakMinutes: 7,
+        longBreakMinutes: 20,
+        focusSessionsBeforeLongBreak: 3,
+      })
+    })
   })
 
   it('handles each fatal audio error once and allows a later resume', async () => {
@@ -148,11 +193,12 @@ describe('Chillax app', () => {
     await screen.findByRole('button', { name: 'Pause focus session' })
   })
 
-  it('uses one accessible duration label and omits progress in endless mode', () => {
+  it('uses complete session labels and omits progress in infinite mode', () => {
     render(<App />)
 
-    expect(screen.getByRole('button', { name: '25 min' })).toHaveTextContent('25')
-    fireEvent.click(screen.getByRole('button', { name: 'Endless' }))
+    expect(screen.getByRole('button', { name: '60 minutes' })).toHaveTextContent('60 minutes')
+    expect(screen.getByRole('button', { name: 'Custom' })).toHaveTextContent('Custom')
+    fireEvent.click(screen.getByRole('button', { name: 'Infinite' }))
     expect(screen.getByLabelText('00:00 elapsed')).toBeInTheDocument()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
@@ -160,7 +206,7 @@ describe('Chillax app', () => {
   it('opens settings and restores defaults', async () => {
     render(<App />)
 
-    fireEvent.click(screen.getByRole('button', { name: /Flow/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Flow State:/ }))
     const settingsButton = screen.getByRole('button', { name: 'Open settings' })
     fireEvent.click(settingsButton)
     expect(screen.getByRole('dialog', { name: 'Make it yours.' })).toBeInTheDocument()
@@ -176,13 +222,15 @@ describe('Chillax app', () => {
 
     fireEvent.click(resetButton)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Deep Work:/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '60 minutes' })).toHaveAttribute('aria-pressed', 'true')
     expect(audioMocks.stop).toHaveBeenCalled()
     await waitFor(() => expect(settingsButton).toHaveFocus())
 
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(saved.preferences.preset).toBe('deep-work')
+      expect(saved.sessionPlan.choice).toBe('sixty')
     })
   })
 })

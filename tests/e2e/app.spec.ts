@@ -16,7 +16,7 @@ test('loads the complete focus player without browser errors', async ({ page }) 
 
   await expect(page.getByRole('heading', { name: 'Find your quiet.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start focus session' })).toBeEnabled()
-  await expect(page.getByLabel('50:00 remaining')).toBeVisible()
+  await expect(page.getByLabel('60:00 remaining')).toBeVisible()
   await expect(page.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('.vite-error-overlay')).toHaveCount(0)
   expect(pageErrors).toEqual([])
@@ -26,7 +26,10 @@ test('loads the complete focus player without browser errors', async ({ page }) 
 test('plays, changes soundscape, pauses, and remembers choices', async ({ page }) => {
   await page.getByRole('button', { name: /Flow/ }).click()
   await page.getByRole('button', { name: /Strong: Fuller/ }).click()
-  await page.getByRole('button', { name: /25 min/ }).click()
+  await page.getByRole('button', { name: 'Custom' }).click()
+  const customDialog = page.getByRole('dialog', { name: 'Set your rhythm.' })
+  await customDialog.getByRole('spinbutton', { name: /Session length/ }).fill('25')
+  await customDialog.getByRole('button', { name: 'Use this session' }).click()
   await page.getByRole('button', { name: 'Start focus session' }).click()
 
   await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
@@ -39,6 +42,7 @@ test('plays, changes soundscape, pauses, and remembers choices', async ({ page }
   await page.reload()
   await expect(page.getByRole('button', { name: /Flow/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: /Strong: Fuller/ })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('Session paused', { exact: true })).toBeVisible()
 })
 
@@ -55,7 +59,7 @@ test('supports keyboard playback, mute, settings, and reset', async ({ page }) =
   await expect(page.getByText(/no account, analytics, cookies/i)).toBeVisible()
   await page.getByRole('button', { name: 'Restore default settings' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByLabel('50:00 remaining')).toBeVisible()
+  await expect(page.getByLabel('60:00 remaining')).toBeVisible()
 })
 
 test('ships an installable manifest and works offline after caching', async ({ page, context, request }) => {
@@ -129,9 +133,77 @@ test('streams recorded loops on demand and crossfades without stopping the timer
   )
   await page.getByRole('button', { name: /Light Rain:/ }).click()
   expect([200, 206]).toContain((await rainResponse).status())
-  await expect(page).toHaveTitle(/Light Rain · Chillax/)
+  await expect(page).toHaveTitle(/Light Rain · 60 minute session · Chillax/)
   await expect(page.getByText('Focus session in progress', { exact: true })).toBeVisible()
+
+  await page.getByRole('tab', { name: /Lo-fi/ }).click()
+  const lofiResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/audio/lofi/soft-study.ogg'),
+  )
+  await page.getByRole('button', { name: /Soft Study:/ }).click()
+  expect([200, 206]).toContain((await lofiResponse).status())
+  await expect(page).toHaveTitle(/Soft Study · 60 minute session · Chillax/)
+
+  const cafeResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/audio/lofi/cafe-focus.ogg'),
+  )
+  await page.getByRole('button', { name: /Café Focus:/ }).click()
+  expect([200, 206]).toContain((await cafeResponse).status())
+
+  const nightResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/audio/lofi/lofi-again.ogg'),
+  )
+  await page.getByRole('button', { name: /Night Notes:/ }).click()
+  expect([200, 206]).toContain((await nightResponse).status())
+  await expect(page).toHaveTitle(/Night Notes · 60 minute session · Chillax/)
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause focus session' }).click()
+})
+
+test('configures and restores a complete Pomodoro cycle', async ({ page }) => {
+  await page.getByRole('button', { name: 'Custom' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Set your rhythm.' })
+  await dialog.getByRole('button', { name: /Pomodoro/ }).click()
+  await dialog.getByRole('spinbutton', { name: /Focus session/ }).fill('30')
+  await dialog.getByRole('spinbutton', { name: /Short break/ }).fill('7')
+  await dialog.locator('#pomodoro-long-break-minutes').fill('20')
+  await dialog.locator('#pomodoro-focus-sessions').fill('3')
+  await dialog.getByRole('button', { name: 'Use this session' }).click()
+
+  await expect(page.getByLabel('30:00 remaining')).toBeVisible()
+  await expect(page.getByText('Focus 1 of 3', { exact: true })).toBeVisible()
+  await expect(page.getByText('30 focus / 7 short / 20 long / every 3', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Start focus session' }).click()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause focus session' }).click()
+
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Focus 1 of 3', { exact: true })).toBeVisible()
+  await expect(page.getByText('Focus session paused', { exact: true })).toBeVisible()
+})
+
+test('shows complete controls without truncation at the reported layout size', async ({ page }) => {
+  await page.setViewportSize({ width: 718, height: 640 })
+
+  for (const name of ['60 minutes', 'Infinite', 'Custom']) {
+    const button = page.getByRole('button', { name })
+    await expect(button).toBeVisible()
+    expect((await button.textContent())?.trim()).toBe(name)
+    expect(await button.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+  }
+
+  const standard = page.getByRole('button', { name: /Standard: Balanced/ })
+  await expect(standard).toBeVisible()
+  expect((await standard.textContent())?.trim()).toBe('Standard')
+  expect(await standard.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+  for (const copy of await page.locator('.sound-card__copy').all()) {
+    expect(await copy.evaluate((element) =>
+      element.scrollWidth <= element.clientWidth + 1
+      && element.scrollHeight <= element.clientHeight + 1,
+    )).toBe(true)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(718)
 })
 
 test('persists dark mode and keeps the mobile transport in reach', async ({ page }) => {

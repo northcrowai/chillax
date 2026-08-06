@@ -1,31 +1,56 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { AmbientVisual } from './components/AmbientVisual'
 import { Brand } from './components/Brand'
-import { DurationSelector } from './components/DurationSelector'
+import { CustomSessionDialog } from './components/CustomSessionDialog'
 import { InstallIcon, MoonIcon, SettingsIcon, SunIcon } from './components/Icons'
 import { IntensitySelector } from './components/IntensitySelector'
 import { PlaybackControls } from './components/PlaybackControls'
 import { PresetSelector } from './components/PresetSelector'
+import { SessionSelector } from './components/SessionSelector'
 import { SettingsDialog } from './components/SettingsDialog'
 import { TimerDisplay } from './components/TimerDisplay'
 import { VolumeControl } from './components/VolumeControl'
-import { DURATION_OPTIONS, getPreset } from './data/presets'
+import { getPreset } from './data/presets'
 import { useFocusAudio } from './hooks/useFocusAudio'
 import { useFocusTimer } from './hooks/useFocusTimer'
+import { usePomodoroTimer } from './hooks/usePomodoroTimer'
 import { usePwaInstall } from './hooks/usePwaInstall'
 import { useWakeLock } from './hooks/useWakeLock'
+import { DEFAULT_POMODORO_CONFIG } from './lib/pomodoro'
+import { DEFAULT_SESSION_PLAN, createSessionPlan, resolveSessionPlan } from './lib/session'
 import {
   DEFAULT_PREFERENCES,
   clearStoredState,
   loadStoredState,
   savePreferences,
+  saveSessionPlan,
 } from './lib/storage'
 import { isChillaxOfflineReady, registerChillaxServiceWorker } from './pwa'
-import type { Intensity, PreferencesV2, PresetId, ThemeMode } from './types'
+import type {
+  Intensity,
+  PomodoroConfig,
+  PomodoroPhase,
+  PreferencesV2,
+  PresetId,
+  SessionChoice,
+  SessionPlanV1,
+  ThemeMode,
+  TimerStatus,
+} from './types'
 
-const MINUTE_MS = 60_000
-const QUICK_DURATIONS = new Set(DURATION_OPTIONS.map((option) => option.minutes))
-const FOOTER_FACTS = ['12 soundscapes', '13.3 MB open audio pack', 'No analytics'] as const
+const FOOTER_FACTS = ['15 soundscapes', '19.2 MB open audio pack', 'No analytics'] as const
+
+const POMODORO_PLAYBACK_NAMES: Readonly<Record<PomodoroPhase, string>> = {
+  focus: 'focus session',
+  'short-break': 'short break',
+  'long-break': 'long break',
+}
+
+const POMODORO_PHASE_NAMES: Readonly<Record<PomodoroPhase, string>> = {
+  focus: 'Focus session',
+  'short-break': 'Short break',
+  'long-break': 'Long break',
+}
 
 const clampVolume = (volume: number) => Math.max(0, Math.min(0.75, volume))
 
@@ -33,30 +58,39 @@ const formatTimer = (milliseconds: number, countUp: boolean) => {
   const totalSeconds = countUp
     ? Math.floor(Math.max(0, milliseconds) / 1_000)
     : Math.ceil(Math.max(0, milliseconds) / 1_000)
-  const hours = Math.floor(totalSeconds / 3_600)
-  const minutes = Math.floor((totalSeconds % 3_600) / 60)
+  const hours = countUp ? Math.floor(totalSeconds / 3_600) : 0
+  const minutes = countUp
+    ? Math.floor((totalSeconds % 3_600) / 60)
+    : Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   const parts = hours > 0 ? [hours, minutes, seconds] : [minutes, seconds]
   return parts.map((part) => String(part).padStart(2, '0')).join(':')
 }
-
-const getCustomDuration = (durationMinutes: number | null) =>
-  durationMinutes !== null && !QUICK_DURATIONS.has(durationMinutes) ? durationMinutes : 35
 
 const isTypingTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
   return target.matches('input, textarea, select, button, a, [contenteditable="true"]')
 }
 
+const getPomodoroStatusText = (status: TimerStatus, phase: PomodoroPhase) => {
+  const name = POMODORO_PHASE_NAMES[phase]
+  if (status === 'idle') return `${name} ready`
+  if (status === 'running') return `${name} in progress`
+  if (status === 'paused') return `${name} paused`
+  return `${name} complete`
+}
+
 export function App() {
   const [initialState] = useState(loadStoredState)
   const [preferences, setPreferences] = useState<PreferencesV2>(initialState.preferences)
-  const [customMinutes, setCustomMinutes] = useState(() => getCustomDuration(initialState.preferences.durationMinutes))
+  const [sessionPlan, setSessionPlan] = useState<SessionPlanV1>(initialState.sessionPlan)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [customSessionOpen, setCustomSessionOpen] = useState(false)
   const [offlineReady, setOfflineReady] = useState(false)
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
+  const customSessionButtonRef = useRef<HTMLButtonElement>(null)
   const playbackPendingRef = useRef(false)
   const handledFatalErrorRef = useRef(0)
   const {
@@ -78,6 +112,18 @@ export function App() {
     setSettingsOpen(false)
     window.requestAnimationFrame(() => settingsButtonRef.current?.focus())
   }, [])
+  const openCustomSession = useCallback(() => setCustomSessionOpen(true), [])
+  const closeCustomSession = useCallback(() => {
+    setCustomSessionOpen(false)
+    window.requestAnimationFrame(() => customSessionButtonRef.current?.focus())
+  }, [])
+
+  const updatePreference = useCallback(<Key extends keyof PreferencesV2>(
+    key: Key,
+    value: PreferencesV2[Key],
+  ) => {
+    setPreferences((current) => ({ ...current, [key]: value }))
+  }, [])
 
   const handleTimerComplete = useCallback(() => {
     void (async () => {
@@ -86,36 +132,73 @@ export function App() {
     })()
   }, [pauseAudio, playCompletionChime])
 
-  const timer = useFocusTimer({
+  const {
+    announcement: focusTimerAnnouncement,
+    configure: configureFocusTimer,
+    pause: pauseFocusTimer,
+    reset: resetFocusTimer,
+    snapshot: focusTimerSnapshot,
+    start: startFocusTimer,
+    state: focusTimerState,
+  } = useFocusTimer({
     initialSession: initialState.session,
     onComplete: handleTimerComplete,
   })
   const {
-    announcement: timerAnnouncement,
-    pause: pauseTimer,
-    reset: resetTimer,
-    setDurationMinutes,
-    snapshot: timerSnapshot,
-    start: startTimer,
-    state: timerState,
-  } = timer
-  const wakeLock = useWakeLock(preferences.wakeLockEnabled && timerState.status === 'running')
+    announcement: pomodoroAnnouncement,
+    configure: configurePomodoroTimer,
+    pause: pausePomodoroTimer,
+    reset: resetPomodoroTimer,
+    snapshot: pomodoroSnapshot,
+    start: startPomodoroTimer,
+    state: pomodoroState,
+  } = usePomodoroTimer({
+    initialSession: initialState.pomodoroSession,
+    onPhaseComplete: handleTimerComplete,
+  })
+  const isPomodoro = sessionPlan.choice === 'custom' && sessionPlan.customMode === 'pomodoro'
+  const timerState = isPomodoro ? pomodoroState.timer : focusTimerState
+  const timerSnapshot = isPomodoro ? pomodoroSnapshot.timer : focusTimerSnapshot
+  const timerAnnouncement = isPomodoro ? pomodoroAnnouncement : focusTimerAnnouncement
+  const timerStatus = timerState.status
+  const sessionIsRunning = timerStatus === 'running'
+  const dialogOpen = settingsOpen || customSessionOpen
+  const wakeLock = useWakeLock(preferences.wakeLockEnabled && sessionIsRunning)
   const pwaInstall = usePwaInstall()
 
   const preset = getPreset(preferences.preset)
   const timerDisplay = formatTimer(timerSnapshot.displayMs, timerSnapshot.mode === 'endless')
-  const timerStatus = timerState.status
-  const sessionIsRunning = timerStatus === 'running'
+  const sessionLabel = isPomodoro
+    ? pomodoroSnapshot.phase === 'focus'
+      ? `Focus ${pomodoroSnapshot.focusSessionNumber} of ${pomodoroSnapshot.focusSessionsBeforeLongBreak}`
+      : pomodoroSnapshot.phaseLabel
+    : sessionPlan.choice === 'endless'
+      ? 'Infinite session'
+      : sessionPlan.choice === 'sixty'
+        ? '60 minute session'
+        : `${sessionPlan.customDurationMinutes} minute session`
+  const playbackSessionName = isPomodoro
+    ? POMODORO_PLAYBACK_NAMES[pomodoroSnapshot.phase]
+    : 'focus session'
+  const statusText = isPomodoro
+    ? getPomodoroStatusText(timerSnapshot.status, pomodoroSnapshot.phase)
+    : undefined
 
   useEffect(() => {
     if (fatalErrorVersion === 0 || fatalErrorVersion === handledFatalErrorRef.current) return
     handledFatalErrorRef.current = fatalErrorVersion
-    if (timerStatus === 'running') pauseTimer()
-  }, [fatalErrorVersion, pauseTimer, timerStatus])
+    if (timerStatus !== 'running') return
+    if (isPomodoro) pausePomodoroTimer()
+    else pauseFocusTimer()
+  }, [fatalErrorVersion, isPomodoro, pauseFocusTimer, pausePomodoroTimer, timerStatus])
 
   useEffect(() => {
     savePreferences(preferences)
   }, [preferences])
+
+  useEffect(() => {
+    saveSessionPlan(sessionPlan)
+  }, [sessionPlan])
 
   useEffect(() => {
     document.documentElement.dataset.theme = preferences.theme
@@ -144,9 +227,9 @@ export function App() {
 
   useEffect(() => {
     document.title = sessionIsRunning
-      ? `${timerDisplay} · ${preset.name} · Chillax`
+      ? `${timerDisplay} · ${preset.name} · ${sessionLabel} · Chillax`
       : 'Chillax — Find your quiet'
-  }, [preset.name, sessionIsRunning, timerDisplay])
+  }, [preset.name, sessionIsRunning, sessionLabel, timerDisplay])
 
   const handleTogglePlayback = useCallback(async () => {
     if (audioIsBusy || playbackPendingRef.current) return
@@ -154,7 +237,8 @@ export function App() {
 
     try {
       if (timerStatus === 'running') {
-        pauseTimer()
+        if (isPomodoro) pausePomodoroTimer()
+        else pauseFocusTimer()
         await pauseAudio()
         return
       }
@@ -164,37 +248,62 @@ export function App() {
         preferences.intensity,
         preferences.volume,
       )
-      if (started) startTimer()
+      if (!started) return
+      if (isPomodoro) startPomodoroTimer()
+      else startFocusTimer()
     } finally {
       playbackPendingRef.current = false
     }
   }, [
     audioIsBusy,
+    isPomodoro,
     pauseAudio,
-    pauseTimer,
+    pauseFocusTimer,
+    pausePomodoroTimer,
     preferences.intensity,
     preferences.preset,
     preferences.volume,
     startAudio,
-    startTimer,
+    startFocusTimer,
+    startPomodoroTimer,
     timerStatus,
   ])
 
   const handleReset = useCallback(() => {
-    const mode = preferences.durationMinutes === null ? 'endless' : 'countdown'
-    const durationMs = preferences.durationMinutes === null
-      ? null
-      : preferences.durationMinutes * MINUTE_MS
-    resetTimer(mode, durationMs)
+    if (isPomodoro) {
+      resetPomodoroTimer()
+    } else {
+      const resolved = resolveSessionPlan(sessionPlan)
+      if (resolved.kind === 'timer') resetFocusTimer(resolved.mode, resolved.durationMs)
+    }
     void stopAudio()
-  }, [preferences.durationMinutes, resetTimer, stopAudio])
+  }, [isPomodoro, resetFocusTimer, resetPomodoroTimer, sessionPlan, stopAudio])
 
-  const updatePreference = useCallback(<Key extends keyof PreferencesV2>(
-    key: Key,
-    value: PreferencesV2[Key],
+  const handleSessionSelect = useCallback((choice: Exclude<SessionChoice, 'custom'>) => {
+    const nextPlan = createSessionPlan({ ...sessionPlan, choice })
+    const resolved = resolveSessionPlan(nextPlan)
+    setSessionPlan(nextPlan)
+    if (resolved.kind === 'timer') configureFocusTimer(resolved.mode, resolved.durationMs)
+    updatePreference('durationMinutes', choice === 'endless' ? null : 60)
+    void stopAudio()
+  }, [configureFocusTimer, sessionPlan, stopAudio, updatePreference])
+
+  const handleApplyCustomSession = useCallback((
+    nextPlan: SessionPlanV1,
+    nextConfig: PomodoroConfig,
   ) => {
-    setPreferences((current) => ({ ...current, [key]: value }))
-  }, [])
+    setSessionPlan(nextPlan)
+    configurePomodoroTimer(nextConfig)
+    if (nextPlan.customMode === 'duration') {
+      const resolved = resolveSessionPlan(nextPlan)
+      if (resolved.kind === 'timer') configureFocusTimer(resolved.mode, resolved.durationMs)
+      updatePreference('durationMinutes', nextPlan.customDurationMinutes)
+    } else {
+      updatePreference('durationMinutes', nextConfig.workMinutes)
+    }
+    void stopAudio()
+    closeCustomSession()
+  }, [closeCustomSession, configureFocusTimer, configurePomodoroTimer, stopAudio, updatePreference])
 
   const handlePresetChange = useCallback((nextPreset: PresetId) => {
     updatePreference('preset', nextPreset)
@@ -205,18 +314,6 @@ export function App() {
     updatePreference('intensity', nextIntensity)
     void setAudioIntensity(nextIntensity)
   }, [setAudioIntensity, updatePreference])
-
-  const handleDurationSelect = useCallback((minutes: number | null) => {
-    updatePreference('durationMinutes', minutes)
-    setDurationMinutes(minutes)
-  }, [setDurationMinutes, updatePreference])
-
-  const handleCustomDurationChange = useCallback((minutes: number) => {
-    const nextMinutes = Math.max(5, Math.min(180, Number.isFinite(minutes) ? minutes : 25))
-    setCustomMinutes(nextMinutes)
-    updatePreference('durationMinutes', nextMinutes)
-    setDurationMinutes(nextMinutes)
-  }, [setDurationMinutes, updatePreference])
 
   const handleVolumeChange = useCallback((volume: number) => {
     const nextVolume = clampVolume(volume)
@@ -243,11 +340,15 @@ export function App() {
   const handleResetPreferences = useCallback(() => {
     clearStoredState()
     setPreferences({ ...DEFAULT_PREFERENCES })
-    setCustomMinutes(35)
-    resetTimer('countdown', DEFAULT_PREFERENCES.durationMinutes! * MINUTE_MS)
+    setSessionPlan({ ...DEFAULT_SESSION_PLAN })
+    const defaultSession = resolveSessionPlan(DEFAULT_SESSION_PLAN)
+    if (defaultSession.kind === 'timer') {
+      resetFocusTimer(defaultSession.mode, defaultSession.durationMs)
+    }
+    configurePomodoroTimer({ ...DEFAULT_POMODORO_CONFIG })
     void stopAudio()
     closeSettings()
-  }, [closeSettings, resetTimer, stopAudio])
+  }, [closeSettings, configurePomodoroTimer, resetFocusTimer, stopAudio])
 
   const handleWakeLockChange = useCallback((enabled: boolean) => {
     updatePreference('wakeLockEnabled', enabled)
@@ -268,7 +369,7 @@ export function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (settingsOpen || isTypingTarget(event.target) || event.repeat) return
+      if (dialogOpen || isTypingTarget(event.target) || event.repeat) return
       if (event.code === 'Space') {
         event.preventDefault()
         void handleTogglePlayback()
@@ -279,12 +380,12 @@ export function App() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleToggleMute, handleTogglePlayback, settingsOpen])
+  }, [dialogOpen, handleToggleMute, handleTogglePlayback])
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: preset.name,
+      title: `${preset.name} · ${sessionLabel}`,
       artist: 'Chillax Focus',
       album: preset.sound,
       artwork: [
@@ -305,14 +406,14 @@ export function App() {
       navigator.mediaSession.setActionHandler('pause', null)
       navigator.mediaSession.setActionHandler('stop', null)
     }
-  }, [handleReset, handleTogglePlayback, preset.name, preset.sound, sessionIsRunning])
+  }, [handleReset, handleTogglePlayback, preset.name, preset.sound, sessionIsRunning, sessionLabel])
 
   return (
     <div class="app" data-preset={preferences.preset} data-theme={preferences.theme}>
       <div
-        aria-hidden={settingsOpen || undefined}
+        aria-hidden={dialogOpen || undefined}
         class="app-shell"
-        inert={settingsOpen || undefined}
+        inert={dialogOpen || undefined}
       >
         <header class="app-header">
           <Brand />
@@ -380,22 +481,27 @@ export function App() {
                 mode={timerSnapshot.mode}
                 presetName={preset.name}
                 progress={timerSnapshot.progress}
+                progressLabel={`${sessionLabel} progress`}
+                sessionLabel={sessionLabel}
                 status={timerSnapshot.status}
+                statusText={statusText}
               />
               <PlaybackControls
                 isBusy={audioIsBusy}
                 onReset={handleReset}
                 onToggle={() => void handleTogglePlayback()}
+                sessionName={playbackSessionName}
                 status={timerSnapshot.status}
               />
 
               <div class="focus-controls">
-                <DurationSelector
-                  customMinutes={customMinutes}
+                <SessionSelector
+                  customButtonRef={customSessionButtonRef}
                   disabled={sessionIsRunning || audioIsBusy}
-                  durationMinutes={preferences.durationMinutes}
-                  onCustomChange={handleCustomDurationChange}
-                  onSelect={handleDurationSelect}
+                  onOpenCustom={openCustomSession}
+                  onSelect={handleSessionSelect}
+                  plan={sessionPlan}
+                  pomodoroConfig={pomodoroState.config}
                 />
                 <IntensitySelector
                   disabled={audioIsBusy}
@@ -439,6 +545,15 @@ export function App() {
         wakeLockEnabled={preferences.wakeLockEnabled}
         wakeLockSupported={wakeLock.isSupported}
       />
+
+      {customSessionOpen ? (
+        <CustomSessionDialog
+          onApply={handleApplyCustomSession}
+          onClose={closeCustomSession}
+          plan={sessionPlan}
+          pomodoroConfig={pomodoroState.config}
+        />
+      ) : null}
 
       {audioError ? (
         <aside class="notice notice--error" role="alert">

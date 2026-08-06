@@ -1,11 +1,10 @@
 import type {
-  DurationOption,
   Intensity,
   PresetId,
   ProceduralPresetId,
 } from '../types'
 
-export type SoundCollection = 'focus' | 'nature'
+export type SoundCollection = 'focus' | 'nature' | 'lofi'
 
 export interface ProceduralSoundSource {
   type: 'procedural'
@@ -192,13 +191,51 @@ export const PRESETS: readonly PresetDefinition[] = [
       sourceUrl: 'https://freesound.org/people/felix.blume/sounds/139337/',
     },
   },
-] as const
-
-export const DURATION_OPTIONS: readonly DurationOption[] = [
-  { id: '25', label: '25 min', mode: 'countdown', minutes: 25 },
-  { id: '50', label: '50 min', mode: 'countdown', minutes: 50 },
-  { id: '90', label: '90 min', mode: 'countdown', minutes: 90 },
-  { id: 'endless', label: 'Endless', mode: 'endless', minutes: null },
+  {
+    id: 'lofi-soft-study',
+    name: 'Soft Study',
+    shortName: 'Soft study',
+    description: 'Mellow keys and an easy study beat',
+    sound: 'Lo-fi loop / OMF-Games',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: '/audio/lofi/soft-study.ogg',
+      credit: 'OMF-Games',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/lofi-hip-hop-loop',
+    },
+  },
+  {
+    id: 'lofi-cafe-focus',
+    name: 'Café Focus',
+    shortName: 'Café focus',
+    description: 'A relaxed groove for steady work',
+    sound: 'Lo-fi loop / OMF-Games + qubodup',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: '/audio/lofi/cafe-focus.ogg',
+      credit: 'OMF-Games / qubodup',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/chill-lofi-inspired-loop-edit',
+    },
+  },
+  {
+    id: 'lofi-night-notes',
+    name: 'Night Notes',
+    shortName: 'Night notes',
+    description: 'Dusty chords for late, quiet focus',
+    sound: 'Lo-fi loop / OMF-Games',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: '/audio/lofi/lofi-again.ogg',
+      credit: 'OMF-Games',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/lofi-again',
+    },
+  },
 ] as const
 
 export const INTENSITIES: readonly {

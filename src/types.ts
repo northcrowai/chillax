@@ -10,6 +10,9 @@ export type RecordedPresetId =
   | 'forest-morning'
   | 'fireplace'
   | 'wind'
+  | 'lofi-soft-study'
+  | 'lofi-cafe-focus'
+  | 'lofi-night-notes'
 
 export type PresetId = ProceduralPresetId | RecordedPresetId
 
@@ -20,13 +23,6 @@ export type ThemeMode = 'light' | 'dark'
 export type TimerMode = 'countdown' | 'endless'
 
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'completed'
-
-export interface DurationOption {
-  id: string
-  label: string
-  mode: TimerMode
-  minutes: number | null
-}
 
 export interface PreferencesV2 {
   version: 2
@@ -60,6 +56,56 @@ export interface TimerSnapshot {
 export interface RestoredSession {
   state: TimerState
   requiresResume: boolean
+}
+
+export type SessionChoice = 'sixty' | 'endless' | 'custom'
+
+export type CustomSessionMode = 'duration' | 'pomodoro'
+
+export interface SessionPlanV1 {
+  version: 1
+  choice: SessionChoice
+  customMode: CustomSessionMode
+  customDurationMinutes: number
+}
+
+export interface PomodoroConfig {
+  workMinutes: number
+  shortBreakMinutes: number
+  longBreakMinutes: number
+  focusSessionsBeforeLongBreak: number
+}
+
+export type PomodoroPhase = 'focus' | 'short-break' | 'long-break'
+
+export interface PomodoroState {
+  version: 1
+  config: PomodoroConfig
+  phase: PomodoroPhase
+  completedFocusSessions: number
+  focusSessionsInCycle: number
+  timer: TimerState
+}
+
+export interface PomodoroSnapshot {
+  phase: PomodoroPhase
+  phaseLabel: string
+  focusSessionNumber: number
+  focusSessionsBeforeLongBreak: number
+  completedFocusSessions: number
+  timer: TimerSnapshot
+}
+
+export interface PomodoroTransition {
+  state: PomodoroState
+  completedPhase: PomodoroPhase | null
+  advanced: boolean
+}
+
+export interface RestoredPomodoroSession {
+  state: PomodoroState
+  requiresResume: boolean
+  completedPhase: PomodoroPhase | null
 }
 
 export interface AudioEngineState {

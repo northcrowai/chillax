@@ -6,22 +6,29 @@ interface PlaybackControlsProps {
   isBusy: boolean
   onToggle: () => void
   onReset: () => void
+  sessionName?: string
 }
 
-export function PlaybackControls({ status, isBusy, onToggle, onReset }: PlaybackControlsProps) {
+export function PlaybackControls({
+  status,
+  isBusy,
+  onToggle,
+  onReset,
+  sessionName = 'focus session',
+}: PlaybackControlsProps) {
   const isPlaying = status === 'running'
   const actionLabel = isPlaying
-    ? 'Pause focus session'
+    ? `Pause ${sessionName}`
     : status === 'completed'
-      ? 'Start a new focus session'
+      ? `Start a new ${sessionName}`
       : status === 'paused'
-        ? 'Resume focus session'
-        : 'Start focus session'
+        ? `Resume ${sessionName}`
+        : `Start ${sessionName}`
 
   return (
     <div class="playback-controls">
       <button
-        aria-label="Reset focus session"
+        aria-label={`Reset ${sessionName}`}
         class="secondary-action"
         disabled={isBusy || status === 'idle'}
         onClick={onReset}

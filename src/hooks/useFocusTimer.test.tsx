@@ -47,10 +47,10 @@ describe('useFocusTimer', () => {
     act(() => {
       vi.advanceTimersByTime(1_000)
     })
-    expect(result.current.snapshot.displayMs).toBe(30 * MINUTE)
+    expect(result.current.snapshot.displayMs).toBe(40 * MINUTE)
     expect(onStatusChange).toHaveBeenCalledTimes(1)
 
-    now += 31 * MINUTE
+    now += 41 * MINUTE
     act(() => {
       vi.advanceTimersByTime(1_000)
     })

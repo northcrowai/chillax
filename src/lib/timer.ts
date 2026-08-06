@@ -6,7 +6,7 @@ import type {
 } from '../types'
 
 export const MINUTE_MS = 60_000
-export const DEFAULT_DURATION_MS = 50 * MINUTE_MS
+export const DEFAULT_DURATION_MS = 60 * MINUTE_MS
 
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(Math.max(value, minimum), maximum)

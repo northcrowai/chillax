@@ -20,7 +20,7 @@ export default defineConfig({
       manifest: {
         name: 'Chillax Focus',
         short_name: 'Chillax',
-        description: 'Original focus tones and open ambient recordings for calm, uninterrupted focus.',
+        description: 'Original focus tones and open ambient and lo-fi loops for calm, uninterrupted focus.',
         theme_color: '#f7f3ed',
         background_color: '#f7f3ed',
         display: 'standalone',

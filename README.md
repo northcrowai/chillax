@@ -1,31 +1,33 @@
 # Chillax
 
-Chillax is a personal, installable focus app with original procedural tones and a small library of open ambient recordings. It has no account, subscription, analytics, database, cookies, or backend.
+Chillax is a personal, installable focus app with original procedural tones and a small library of open ambient recordings and music. It has no account, subscription, analytics, database, cookies, or backend.
 
 ## What it includes
 
 - Three generated focus tones: Deep Work, Flow State, and Calm Focus
 - Nine CC0/public-domain nature recordings: four rain textures, rainy roof, two forests, fireplace, and wind
+- Three seamless CC0 lo-fi music loops for studying and focused work
 - Same-origin audio streaming with metadata-only preload and two-second crossfades
 - Soft, Standard, and Strong texture levels; recorded sounds change EQ and density without restarting
-- 25, 50, 90, custom, and endless sessions
+- 60-minute, infinite, and custom sessions
+- Configurable Pomodoro cycles with focus, short-break, long-break, and long-break frequency settings
 - Pause, resume, reset, volume, mute, media-key, and optional wake-lock controls
 - A lightweight WebGL liquid visual capped at 30 fps, with reduced-motion, visibility, and CSS fallback behavior
 - Responsive desktop and mobile layouts plus remembered light and dark themes
 - Refresh-safe timer recovery using absolute timestamps
-- Device-local preferences under the versioned `chillax:v2` key, including automatic `v1` migration
+- Device-local preferences and session state under the `chillax:v2` key, including automatic older-schema migration
 - Installable Windows PWA behavior and offline access to the app shell and generated focus tones
 - Keyboard shortcuts: `Space` for play/pause and `M` for mute
 
 The generated audio is original. Chillax does not use Brain.fm recordings, assets, branding, patented rapid-modulation implementation, or medical claims.
 
-The recorded pack is 13.27 MiB, is loaded only when a nature sound is selected, and is excluded from the initial PWA precache. Source and license details are in [THIRD_PARTY_AUDIO.md](./THIRD_PARTY_AUDIO.md).
+The recorded pack is 19.19 MiB, is loaded only when a recorded sound is selected, and is excluded from the initial PWA precache. Source and license details are in [THIRD_PARTY_AUDIO.md](./THIRD_PARTY_AUDIO.md).
 
 ## Use the app
 
 Open [Chillax](https://chillax-northcrow.vercel.app) in Edge or Chrome. To install it on Windows, use the browser's **Install app** option after the first load.
 
-The interface and generated focus tones work offline after setup. A recorded nature loop needs a connection the first time it is played; normal browser caching may retain it afterward, but Chillax does not promise the full recording library offline.
+The interface and generated focus tones work offline after setup. A recorded nature or lo-fi loop needs a connection the first time it is played; normal browser caching may retain it afterward, but Chillax does not promise the full recording library offline.
 
 ## Local development
 
@@ -49,7 +51,7 @@ npm run build
 npm run test:e2e
 ```
 
-The E2E suite runs against the production build and checks generated playback, real recorded streaming, crossfades, persistence, keyboard controls, light/dark themes, mobile reachability, the PWA manifest, offline reload, and the absence of third-party runtime requests.
+The E2E suite runs against the production build and checks generated playback, real recorded streaming, timer and Pomodoro configuration, persistence, keyboard controls, light/dark themes, mobile reachability, the PWA manifest, offline reload, and the absence of third-party runtime requests.
 
 ## Architecture
 

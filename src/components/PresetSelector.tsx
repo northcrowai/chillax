@@ -11,6 +11,7 @@ interface PresetSelectorProps {
 const COLLECTIONS: readonly { id: SoundCollection; label: string; hint: string }[] = [
   { id: 'focus', label: 'Focus tones', hint: 'Generated here' },
   { id: 'nature', label: 'Nature', hint: 'Streams on demand' },
+  { id: 'lofi', label: 'Lo-fi', hint: 'Study and work beats' },
 ]
 
 export function PresetSelector({ value, disabled = false, onChange }: PresetSelectorProps) {
@@ -72,7 +73,11 @@ export function PresetSelector({ value, disabled = false, onChange }: PresetSele
               <small>{preset.description}</small>
             </span>
             <span class="sound-card__source">
-              {preset.source.type === 'procedural' ? 'Live generated' : 'Recorded loop'}
+              {preset.source.type === 'procedural'
+                ? 'Live generated'
+                : preset.collection === 'lofi'
+                  ? 'CC0 music loop'
+                  : 'Recorded loop'}
             </span>
           </button>
         ))}

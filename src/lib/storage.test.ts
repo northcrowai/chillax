@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { createPomodoroState, startPomodoro } from './pomodoro'
+import { DEFAULT_SESSION_PLAN, createSessionPlan } from './session'
 import { createTimerState, startTimer } from './timer'
 import {
   DEFAULT_PREFERENCES,
@@ -7,7 +9,9 @@ import {
   clearStoredState,
   createDefaultPersistedState,
   loadStoredState,
+  savePomodoroState,
   savePreferences,
+  saveSessionPlan,
   saveTimerState,
 } from './storage'
 
@@ -51,10 +55,18 @@ describe('versioned local storage', () => {
     first.preferences.volume = 0
     const second = loadStoredState(storage, START_TIME)
 
-    expect(second.preferences).toEqual(DEFAULT_PREFERENCES)
-    expect(second.session).toEqual({
-      state: createTimerState(),
-      requiresResume: false,
+    expect(second).toMatchObject({
+      preferences: DEFAULT_PREFERENCES,
+      session: {
+        state: createTimerState(),
+        requiresResume: false,
+      },
+      sessionPlan: DEFAULT_SESSION_PLAN,
+      pomodoroSession: {
+        state: createPomodoroState(),
+        requiresResume: false,
+        completedPhase: null,
+      },
     })
   })
 
@@ -67,10 +79,15 @@ describe('versioned local storage', () => {
     const storage = new CountingStorage()
     storage.setItem(STORAGE_KEY, serialized)
 
-    expect(loadStoredState(storage, START_TIME)).toEqual({
+    expect(loadStoredState(storage, START_TIME)).toMatchObject({
       preferences: DEFAULT_PREFERENCES,
       session: {
         state: createTimerState(),
+        requiresResume: false,
+      },
+      sessionPlan: DEFAULT_SESSION_PLAN,
+      pomodoroSession: {
+        state: createPomodoroState(),
         requiresResume: false,
       },
     })
@@ -121,9 +138,41 @@ describe('versioned local storage', () => {
       theme: 'light',
     })
     expect(loaded.session.state).toEqual(timer)
+    expect(loaded.sessionPlan).toMatchObject({
+      choice: 'custom',
+      customMode: 'duration',
+      customDurationMinutes: 25,
+    })
 
     expect(savePreferences({ ...loaded.preferences, preset: 'fireplace' }, storage)).toBe(true)
     expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}').preferences.preset).toBe('fireplace')
+  })
+
+  it('migrates an existing v2 envelope and infers its session choice', () => {
+    const storage = new CountingStorage()
+    const timer = createTimerState('countdown', 90 * MINUTE)
+    storage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 2,
+      preferences: {
+        ...DEFAULT_PREFERENCES,
+        durationMinutes: 90,
+      },
+      timer,
+    }))
+
+    const loaded = loadStoredState(storage, START_TIME)
+    expect(loaded.session.state).toEqual(timer)
+    expect(loaded.sessionPlan).toEqual(createSessionPlan({
+      choice: 'custom',
+      customDurationMinutes: 90,
+    }))
+    expect(loaded.pomodoroSession.state).toEqual(createPomodoroState())
+
+    expect(saveSessionPlan({ ...loaded.sessionPlan, customMode: 'pomodoro' }, storage)).toBe(true)
+    expect(JSON.parse(storage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
+      version: 3,
+      sessionPlan: { choice: 'custom', customMode: 'pomodoro' },
+    })
   })
 
   it('restores a saved running session as paused when time remains', () => {
@@ -150,6 +199,53 @@ describe('versioned local storage', () => {
       requiresResume: false,
       state: { status: 'completed' },
     })
+  })
+
+  it('persists Pomodoro configuration, cycle progress, and active-phase recovery', () => {
+    const storage = new CountingStorage()
+    const configured = createPomodoroState({
+      workMinutes: 2,
+      shortBreakMinutes: 1,
+      longBreakMinutes: 3,
+      focusSessionsBeforeLongBreak: 2,
+    })
+    const running = startPomodoro(configured, START_TIME)
+
+    expect(savePomodoroState(running, storage)).toBe(true)
+    expect(savePomodoroState(running, storage)).toBe(false)
+    expect(loadStoredState(storage, START_TIME + MINUTE).pomodoroSession).toMatchObject({
+      requiresResume: true,
+      completedPhase: null,
+      state: {
+        phase: 'focus',
+        config: configured.config,
+        timer: { status: 'paused', remainingWhenPausedMs: MINUTE },
+      },
+    })
+
+    expect(loadStoredState(storage, START_TIME + 10 * MINUTE).pomodoroSession).toMatchObject({
+      requiresResume: false,
+      completedPhase: 'focus',
+      state: {
+        phase: 'short-break',
+        completedFocusSessions: 1,
+        focusSessionsInCycle: 1,
+        timer: { status: 'idle', durationMs: MINUTE },
+      },
+    })
+  })
+
+  it('rejects invalid session and Pomodoro state writes', () => {
+    const storage = new CountingStorage()
+    expect(saveSessionPlan({
+      ...DEFAULT_SESSION_PLAN,
+      customDurationMinutes: 1,
+    }, storage)).toBe(false)
+    expect(savePomodoroState({
+      ...createPomodoroState(),
+      focusSessionsInCycle: 99,
+    }, storage)).toBe(false)
+    expect(storage.writes).toBe(0)
   })
 
   it('gracefully handles unavailable storage and only clears existing data', () => {

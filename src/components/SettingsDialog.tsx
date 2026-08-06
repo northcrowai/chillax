@@ -22,6 +22,9 @@ const SOUND_CREDITS = [
   { name: 'Forest Morning', creator: 'nille', license: 'Public domain', url: 'https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg' },
   { name: 'Fireside', creator: 'inchadney', license: 'CC0', url: 'https://freesound.org/people/inchadney/sounds/132534/' },
   { name: 'Open Wind', creator: 'felix.blume', license: 'CC0', url: 'https://freesound.org/people/felix.blume/sounds/139337/' },
+  { name: 'Soft Study', creator: 'OMF-Games', license: 'CC0', url: 'https://opengameart.org/content/lofi-hip-hop-loop' },
+  { name: 'Café Focus', creator: 'OMF-Games / qubodup', license: 'CC0', url: 'https://opengameart.org/content/chill-lofi-inspired-loop-edit' },
+  { name: 'Night Notes', creator: 'OMF-Games', license: 'CC0', url: 'https://opengameart.org/content/lofi-again' },
 ] as const
 
 export function SettingsDialog({
@@ -162,7 +165,7 @@ export function SettingsDialog({
           <summary>
             <span>
               <strong>Open sound credits</strong>
-              <small>9 recordings / 13.3 MB / loaded only when selected</small>
+              <small>12 recordings and music loops / 19.2 MB / loaded only when selected</small>
             </span>
           </summary>
           <ul>
@@ -179,7 +182,7 @@ export function SettingsDialog({
 
         <div class="privacy-note">
           <strong>Private by design</strong>
-          <p>Your settings stay in this browser. Nature recordings stream from this same app; Chillax has no account, analytics, cookies, or remote settings storage.</p>
+          <p>Your settings stay in this browser. Recorded sounds stream from this same app; Chillax has no account, analytics, cookies, or remote settings storage.</p>
         </div>
 
         <button class="text-action text-action--danger" onClick={onResetPreferences} type="button">

@@ -74,6 +74,18 @@ const PALETTES: Record<PresetId, { light: OrbPalette; dark: OrbPalette }> = {
     light: { primary: hex('#527e7b'), secondary: hex('#b8d1c7'), glow: hex('#82c5ba') },
     dark: { primary: hex('#8edbd0'), secondary: hex('#497e80'), glow: hex('#80eee0') },
   },
+  'lofi-soft-study': {
+    light: { primary: hex('#8b5f9d'), secondary: hex('#e0b8d8'), glow: hex('#c886d2') },
+    dark: { primary: hex('#dc91e8'), secondary: hex('#734d93'), glow: hex('#f09bdc') },
+  },
+  'lofi-cafe-focus': {
+    light: { primary: hex('#9c6244'), secondary: hex('#e3bd88'), glow: hex('#d9915f') },
+    dark: { primary: hex('#eda36b'), secondary: hex('#8c514c'), glow: hex('#ffb176') },
+  },
+  'lofi-night-notes': {
+    light: { primary: hex('#525c8f'), secondary: hex('#b7b5d7'), glow: hex('#8c8fd7') },
+    dark: { primary: hex('#9ea2ed'), secondary: hex('#535083'), glow: hex('#ac9fff') },
+  },
 }
 
 const VERTEX_SHADER = `#version 300 es
