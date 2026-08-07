@@ -17,10 +17,10 @@ export default defineConfig({
       includeAssets: [
         'favicon-16x16.png',
         'favicon-32x32.png',
-        'apple-touch-icon.png',
-        'pwa-192x192.png',
-        'pwa-512x512.png',
-        'pwa-maskable-512x512.png',
+        'north-crow-mobile-apple-touch-icon.png',
+        'north-crow-mobile-192.png',
+        'north-crow-mobile-512.png',
+        'north-crow-mobile-maskable-512.png',
       ],
       manifest: {
         name: 'Chillax Focus',
@@ -35,17 +35,17 @@ export default defineConfig({
         categories: ['productivity', 'lifestyle'],
         icons: [
           {
-            src: publicAsset('/pwa-192x192.png'),
+            src: publicAsset('/north-crow-mobile-192.png'),
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: publicAsset('/pwa-512x512.png'),
+            src: publicAsset('/north-crow-mobile-512.png'),
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: publicAsset('/pwa-maskable-512x512.png'),
+            src: publicAsset('/north-crow-mobile-maskable-512.png'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

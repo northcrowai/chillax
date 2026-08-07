@@ -2374,6 +2374,26 @@ html[data-theme="dark"] .traffic-hero {
   border-radius: 21px;
 }
 
+.traffic-drive-preview {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+
+.traffic-drive-preview strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.traffic-drive-preview span {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
 .traffic-leave-time span {
   color: var(--ink-soft);
   font-size: 10px;
@@ -3143,6 +3163,10 @@ html[data-theme="dark"] .traffic-hero {
   }
 
   .brand__logo-full {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .brand__logo-full--dark {
     display: none !important;
   }
 

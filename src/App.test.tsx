@@ -109,39 +109,40 @@ describe('Chillax app', () => {
 
     expect(window.location.pathname).toBe('/traffic')
     await waitFor(() => expect(
-      screen.getByRole('heading', { level: 1, name: 'Get home on time.' }),
+      screen.getByRole('heading', { level: 1, name: 'Get there on time.' }),
     ).toHaveFocus())
     expect(screen.getByRole('button', { name: 'Close traffic and return to focus' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByText(/Traffic is not connected on this deployment yet/)).toBeInTheDocument()
+    expect(screen.getByText(/Traffic needs Google Maps browser keys/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/on the Chillax timer/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
     expect(audioMocks.pause).not.toHaveBeenCalled()
     expect(audioMocks.stop).not.toHaveBeenCalled()
 
-    fireEvent.input(screen.getByRole('textbox', { name: 'Home' }), {
+    fireEvent.input(screen.getByRole('textbox', { name: 'Home address' }), {
       target: { value: '100 Example Avenue' },
     })
-    fireEvent.input(screen.getByLabelText('Be home by'), { target: { value: '20:15' } })
-    fireEvent.click(screen.getByRole('button', { name: '10 minute arrival cushion' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Enter a location' }))
-    fireEvent.input(screen.getByRole('textbox', { name: 'Where are you leaving from?' }), {
+    fireEvent.input(screen.getByLabelText('Arrive home by'), { target: { value: '20:15' } })
+    fireEvent.input(screen.getByRole('textbox', { name: 'Work address' }), {
       target: { value: '200 Sample Street' },
     })
+    fireEvent.input(screen.getByLabelText('Arrive at work by'), { target: { value: '08:30' } })
+    fireEvent.click(screen.getByRole('button', { name: '10 minute arrival cushion' }))
 
     await waitFor(() => {
       const saved = JSON.parse(
         window.localStorage.getItem(TRAFFIC_PREFERENCES_STORAGE_KEY) ?? '{}',
       )
       expect(saved).toEqual({
-        version: 1,
+        version: 2,
         homeAddress: '100 Example Avenue',
-        arrivalTime: '20:15',
+        homeArrivalTime: '20:15',
+        workAddress: '200 Sample Street',
+        workArrivalTime: '08:30',
         cushionMinutes: 10,
       })
-      expect(saved).not.toHaveProperty('manualOrigin')
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to focus' }))

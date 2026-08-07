@@ -120,8 +120,9 @@ test('ships an installable manifest and works offline after caching', async ({ p
     display: 'standalone',
   })
   expect(manifest.icons).toEqual(expect.arrayContaining([
-    expect.objectContaining({ sizes: '192x192' }),
-    expect.objectContaining({ sizes: '512x512' }),
+    expect.objectContaining({ src: '/north-crow-mobile-192.png', sizes: '192x192' }),
+    expect.objectContaining({ src: '/north-crow-mobile-512.png', sizes: '512x512' }),
+    expect.objectContaining({ src: '/north-crow-mobile-maskable-512.png', purpose: 'maskable' }),
   ]))
 
   for (const legalPage of ['privacy', 'terms']) {
@@ -144,6 +145,20 @@ test('ships an installable manifest and works offline after caching', async ({ p
   await expect(page.getByRole('alert')).toHaveCount(0)
   await page.getByRole('button', { name: 'Pause focus session' }).click()
   await context.setOffline(false)
+})
+
+test('uses only the padded North Crow mark in the mobile header', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 })
+  const brand = page.getByRole('link', { name: 'North Crow home' })
+
+  await expect(brand.locator('.brand__logo-full--light')).toBeHidden()
+  await expect(brand.locator('.brand__logo-full--dark')).toBeHidden()
+  await expect(brand.locator('.brand__logo-mark--light')).toBeVisible()
+  await expect(brand.locator('.brand__logo-mark--dark')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(brand.locator('.brand__logo-full--dark')).toBeHidden()
+  await expect(brand.locator('.brand__logo-mark--dark')).toBeVisible()
 })
 
 test('keeps settings keyboard-contained and scrollable on a short screen', async ({ page }) => {
@@ -413,14 +428,14 @@ test('plans a mocked drive without interrupting the session and keeps only prefe
   await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
   await page.getByRole('button', { name: 'Open traffic' }).click()
   await expect(page).toHaveURL(/\/traffic$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Get home on time.' })).toBeFocused()
+  await expect(page.getByRole('heading', { level: 1, name: 'Get there on time.' })).toBeFocused()
   await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
 
-  await page.getByRole('textbox', { name: 'Home', exact: true }).fill('100 Example Avenue')
-  await page.getByLabel('Be home by').fill('18:00')
+  await page.getByRole('textbox', { name: 'Home address' }).fill('100 Example Avenue')
+  await page.getByLabel('Arrive home by').fill('18:00')
+  await page.getByRole('textbox', { name: 'Work address' }).fill('200 Sample Street')
+  await page.getByLabel('Arrive at work by').fill('09:00')
   await page.getByRole('button', { name: '10 minute arrival cushion' }).click()
-  await page.getByRole('button', { name: 'Enter a location' }).click()
-  await page.getByRole('textbox', { name: 'Where are you leaving from?' }).fill('200 Sample Street')
 
   const calculateButton = page.getByRole('button', { name: 'Calculate leave time' })
   await expect(calculateButton).toBeEnabled()
@@ -428,7 +443,7 @@ test('plans a mocked drive without interrupting the session and keeps only prefe
   await expect(page.getByLabel('Your leave time').getByText('5:20 PM', { exact: true })).toBeVisible()
   await expect(page.getByText('30 min', { exact: true })).toBeVisible()
   await expect(page.getByText('+5 min', { exact: true })).toBeVisible()
-  await expect(page.getByAltText('Google Maps route from your starting point to home')).toBeVisible()
+  await expect(page.getByAltText('Google Maps route: Work to Home')).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   expect(routeRequest).toMatchObject({
@@ -448,13 +463,14 @@ test('plans a mocked drive without interrupting the session and keeps only prefe
   await page.reload()
   await expect(page.getByRole('status', { name: /Traffic reminder/ })).toHaveCount(0)
   await page.getByRole('button', { name: 'Open traffic' }).click()
-  await expect(page.getByRole('textbox', { name: 'Home', exact: true })).toHaveValue('100 Example Avenue')
-  await expect(page.getByLabel('Be home by')).toHaveValue('18:00')
+  await expect(page.getByRole('textbox', { name: 'Home address' })).toHaveValue('100 Example Avenue')
+  await expect(page.getByLabel('Arrive home by')).toHaveValue('18:00')
+  await expect(page.getByRole('textbox', { name: 'Work address' })).toHaveValue('200 Sample Street')
+  await expect(page.getByLabel('Arrive at work by')).toHaveValue('09:00')
   await expect(page.getByRole('button', { name: '10 minute arrival cushion' })).toHaveAttribute(
     'aria-pressed',
     'true',
   )
-  await expect(page.getByRole('textbox', { name: 'Where are you leaving from?' })).toHaveCount(0)
 })
 
 test('the focus player does not contact third-party services before Weather or Traffic is opened', async ({ page }) => {

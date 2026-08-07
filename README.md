@@ -19,7 +19,7 @@ Chillax is a personal, installable focus app with original procedural tones and 
 - Installable Windows PWA behavior and offline access to the app shell and generated focus tones
 - Keyboard shortcuts: `Space` for play/pause and `M` for mute
 - A location-aware weather view with current conditions, hourly and five-day forecasts, local time, compact unit controls, optional GPS, and condition/time-aware photography with remembered favorites
-- A traffic-aware leave-by planner with a device-local Home address, adjustable arrival time and cushion, current-location or manual starting point, and a styled Google route map
+- A day-aware Home/Work leave-by planner with device-local addresses, arrival times and cushion, weekday-aware commute switching, and a styled Google route map
 - A compact leave-by clock on the Focus and Weather views that stays available while the Chillax timer and audio continue uninterrupted
 - A source-linked focus quote selected from a short, verified collection on each app load
 
@@ -37,7 +37,7 @@ The interface and generated focus tones work offline after setup. A recorded nat
 
 Weather needs a network connection for fresh conditions and forecasts. Photography falls back to the existing Chillax weather gradients if an image is unavailable. If weather is unavailable, the focus timer and audio controls continue to work normally.
 
-Traffic needs a network connection, Google Maps Platform browser keys, and an initial route calculation from the Traffic view. Route results live only in memory and disappear on reload; the Home address, arrival time, and cushion stay on the device. Traffic errors do not interrupt the focus timer or audio.
+Traffic needs a network connection, Google Maps Platform browser keys, and an initial route calculation from the Traffic view. Route results live only in memory and disappear on reload; Home/Work addresses, arrival times, and the cushion stay on the device. Traffic errors do not interrupt the focus timer or audio.
 
 ## Local development
 

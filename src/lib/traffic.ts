@@ -2,10 +2,31 @@ export type TrafficCushionMinutes = 0 | 5 | 10 | 15
 export type TrafficMapTheme = 'light' | 'dark'
 
 export interface TrafficPreferences {
+  version: 2
+  homeAddress: string
+  homeArrivalTime: string
+  workAddress: string
+  workArrivalTime: string
+  cushionMinutes: TrafficCushionMinutes
+}
+
+interface LegacyTrafficPreferencesV1 {
   version: 1
   homeAddress: string
   arrivalTime: string
   cushionMinutes: TrafficCushionMinutes
+}
+
+export type TrafficDriveDirection = 'home-to-work' | 'work-to-home'
+
+export interface TrafficDrive {
+  direction: TrafficDriveDirection
+  originAddress: string
+  destinationAddress: string
+  desiredArrival: Date
+  dayLabel: 'Today' | 'Tomorrow' | 'Monday'
+  routeLabel: string
+  arrivalLabel: string
 }
 
 export interface TrafficLatLng {
@@ -87,9 +108,11 @@ export type TrafficFetch = (
 export const TRAFFIC_PREFERENCES_STORAGE_KEY = 'chillax:traffic:v1'
 
 export const DEFAULT_TRAFFIC_PREFERENCES: TrafficPreferences = Object.freeze({
-  version: 1,
+  version: 2,
   homeAddress: '',
-  arrivalTime: '18:00',
+  homeArrivalTime: '18:00',
+  workAddress: '',
+  workArrivalTime: '09:00',
   cushionMinutes: 5,
 })
 
@@ -160,6 +183,15 @@ const parseClockTime = (value: unknown): { hours: number; minutes: number } | nu
 
 const isTrafficPreferences = (value: unknown): value is TrafficPreferences =>
   isObject(value)
+  && value.version === 2
+  && isPersistableAddress(value.homeAddress)
+  && parseClockTime(value.homeArrivalTime) !== null
+  && isPersistableAddress(value.workAddress)
+  && parseClockTime(value.workArrivalTime) !== null
+  && isCushionMinutes(value.cushionMinutes)
+
+const isLegacyTrafficPreferencesV1 = (value: unknown): value is LegacyTrafficPreferencesV1 =>
+  isObject(value)
   && value.version === 1
   && isPersistableAddress(value.homeAddress)
   && parseClockTime(value.arrivalTime) !== null
@@ -178,9 +210,20 @@ const getBrowserStorage = (): Storage | null => {
 }
 
 const normalizePreferences = (preferences: TrafficPreferences): TrafficPreferences => ({
-  version: 1,
+  version: 2,
   homeAddress: normalizeAddress(preferences.homeAddress),
-  arrivalTime: preferences.arrivalTime,
+  homeArrivalTime: preferences.homeArrivalTime,
+  workAddress: normalizeAddress(preferences.workAddress),
+  workArrivalTime: preferences.workArrivalTime,
+  cushionMinutes: preferences.cushionMinutes,
+})
+
+const migrateLegacyTrafficPreferences = (preferences: LegacyTrafficPreferencesV1): TrafficPreferences => ({
+  version: 2,
+  homeAddress: normalizeAddress(preferences.homeAddress),
+  homeArrivalTime: preferences.arrivalTime,
+  workAddress: '',
+  workArrivalTime: DEFAULT_TRAFFIC_PREFERENCES.workArrivalTime,
   cushionMinutes: preferences.cushionMinutes,
 })
 
@@ -194,8 +237,9 @@ export function loadTrafficPreferences(
     if (!serialized) return createDefaultPreferences()
 
     const value = JSON.parse(serialized) as unknown
-    if (!isTrafficPreferences(value)) return createDefaultPreferences()
-    return normalizePreferences(value)
+    if (isTrafficPreferences(value)) return normalizePreferences(value)
+    if (isLegacyTrafficPreferencesV1(value)) return migrateLegacyTrafficPreferences(value)
+    return createDefaultPreferences()
   } catch {
     return createDefaultPreferences()
   }
@@ -253,6 +297,72 @@ export function getTodayArrival(arrivalTime: string, now = new Date()): Date {
   }
 
   return arrival
+}
+
+const isWeekday = (date: Date): boolean => date.getDay() >= 1 && date.getDay() <= 5
+
+const getNextWeekday = (now: Date): Date => {
+  const next = new Date(now)
+  next.setHours(0, 0, 0, 0)
+  do {
+    next.setDate(next.getDate() + 1)
+  } while (!isWeekday(next))
+  return next
+}
+
+const getArrivalOnDate = (arrivalTime: string, date: Date): Date => {
+  const parsed = parseClockTime(arrivalTime)
+  if (!parsed || !Number.isFinite(date.getTime())) {
+    throw new TrafficError('invalid-arrival', 'Choose valid Home and Work arrival times.')
+  }
+  const arrival = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    parsed.hours,
+    parsed.minutes,
+    0,
+    0,
+  )
+  if (arrival.getHours() !== parsed.hours || arrival.getMinutes() !== parsed.minutes) {
+    throw new TrafficError('invalid-arrival', 'That time does not occur on this date. Choose another time.')
+  }
+  return arrival
+}
+
+const getDayLabel = (target: Date, now: Date): TrafficDrive['dayLabel'] => {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime()
+  if (targetDay === today) return 'Today'
+  if (targetDay === today + 24 * 60 * 60 * 1000) return 'Tomorrow'
+  return 'Monday'
+}
+
+export function getPlannedTrafficDrive(
+  preferences: TrafficPreferences,
+  now = new Date(),
+): TrafficDrive {
+  const workToday = getArrivalOnDate(preferences.workArrivalTime, now)
+  const homeToday = getArrivalOnDate(preferences.homeArrivalTime, now)
+  const headingToWork = !isWeekday(now)
+    || now.getTime() < workToday.getTime()
+    || now.getTime() >= homeToday.getTime()
+  const desiredArrival = headingToWork
+    ? (!isWeekday(now) || now.getTime() >= homeToday.getTime()
+        ? getArrivalOnDate(preferences.workArrivalTime, getNextWeekday(now))
+        : workToday)
+    : homeToday
+  const direction: TrafficDriveDirection = headingToWork ? 'home-to-work' : 'work-to-home'
+
+  return {
+    direction,
+    originAddress: headingToWork ? normalizeAddress(preferences.homeAddress) : normalizeAddress(preferences.workAddress),
+    destinationAddress: headingToWork ? normalizeAddress(preferences.workAddress) : normalizeAddress(preferences.homeAddress),
+    desiredArrival,
+    dayLabel: getDayLabel(desiredArrival, now),
+    routeLabel: headingToWork ? 'Home to Work' : 'Work to Home',
+    arrivalLabel: headingToWork ? 'Arrive at work' : 'Arrive home',
+  }
 }
 
 const requireApiKey = (apiKey: string): string => {
@@ -413,6 +523,15 @@ const requestTrafficRoute = async (
   }
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new TrafficError(
+        'service',
+        'Google Maps rejected this site’s route permission. The route key needs to allow northcrow.ai.',
+      )
+    }
+    if (response.status === 429) {
+      throw new TrafficError('service', 'Google Maps is temporarily rate-limited. Please try again shortly.')
+    }
     throw new TrafficError('service', TRAFFIC_SERVICE_ERROR)
   }
 
@@ -425,11 +544,6 @@ const requestTrafficRoute = async (
 
   return parseTrafficRoute(payload)
 }
-
-const isSameLocalDay = (first: Date, second: Date): boolean =>
-  first.getFullYear() === second.getFullYear()
-  && first.getMonth() === second.getMonth()
-  && first.getDate() === second.getDate()
 
 const createPlan = (
   route: ParsedTrafficRoute,
@@ -471,11 +585,11 @@ export async function solveTrafficRoute(
 
   const desiredArrival = new Date(options.desiredArrival)
   const desiredArrivalMs = desiredArrival.getTime()
-  if (!Number.isFinite(desiredArrivalMs) || !isSameLocalDay(desiredArrival, startedAt)) {
-    throw new TrafficError('invalid-arrival', 'Choose a valid arrival time for today.')
+  if (!Number.isFinite(desiredArrivalMs)) {
+    throw new TrafficError('invalid-arrival', 'Choose a valid arrival time.')
   }
   if (desiredArrivalMs <= nowMs) {
-    throw new TrafficError('past-arrival', 'That arrival time has already passed. Choose a later time today.')
+    throw new TrafficError('past-arrival', 'That arrival time has already passed. Choose a future time.')
   }
   if (!isCushionMinutes(options.bufferMinutes)) {
     throw new TrafficError('invalid-cushion', 'Choose a 0, 5, 10, or 15 minute arrival cushion.')

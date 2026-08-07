@@ -3,7 +3,7 @@ import {
   buildStaticMapUrl,
   clearTrafficPreferences,
   DEFAULT_TRAFFIC_PREFERENCES,
-  getTodayArrival,
+  getPlannedTrafficDrive,
   loadTrafficPreferences,
   saveTrafficPreferences,
   solveTrafficRoute,
@@ -28,14 +28,9 @@ export type TrafficPlanStatus =
   | 'ready'
   | 'error'
 
-export interface CalculateTrafficOptions {
-  useManualOrigin?: boolean
-}
-
 export interface UseTrafficPlanOptions {
   theme?: TrafficMapTheme
   storage?: Storage | null
-  geolocation?: Pick<Geolocation, 'getCurrentPosition'> | null
   fetchImpl?: TrafficFetch
   now?: () => Date
   routesApiKey?: string
@@ -43,7 +38,7 @@ export interface UseTrafficPlanOptions {
   autoRefreshMs?: number
 }
 
-interface InternalCalculateTrafficOptions extends CalculateTrafficOptions {
+interface InternalCalculateTrafficOptions {
   automatic?: boolean
 }
 
@@ -55,53 +50,15 @@ const getBrowserStorage = (): Storage | null => {
   }
 }
 
-const getBrowserGeolocation = (): Pick<Geolocation, 'getCurrentPosition'> | null => {
-  try {
-    return typeof navigator === 'undefined' ? null : navigator.geolocation ?? null
-  } catch {
-    return null
-  }
-}
-
 const getCurrentDate = () => new Date()
 
 const configurationMessage =
   'Traffic is not configured yet. Add the Google Maps keys to enable route planning.'
 
-const locationMessage =
-  'Current location is unavailable. Enter a starting address instead.'
-
-const deniedLocationMessage =
-  'Location access is off. Enter a starting address instead.'
-
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error
     ? error.message
     : 'Traffic could not calculate this drive. Please try again.'
-
-const requestCoordinates = (
-  geolocation: Pick<Geolocation, 'getCurrentPosition'>,
-): Promise<TrafficOrigin> => new Promise((resolve, reject) => {
-  geolocation.getCurrentPosition(
-    (position) => resolve({
-      kind: 'coordinates',
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-    }),
-    reject,
-    {
-      enableHighAccuracy: false,
-      maximumAge: 2 * 60 * 1000,
-      timeout: 10 * 1000,
-    },
-  )
-})
-
-const isPermissionDenied = (error: unknown): boolean =>
-  typeof error === 'object'
-  && error !== null
-  && 'code' in error
-  && error.code === 1
 
 const isAbortError = (error: unknown): boolean =>
   typeof error === 'object'
@@ -111,9 +68,6 @@ const isAbortError = (error: unknown): boolean =>
 
 export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
   const storage = options.storage === undefined ? getBrowserStorage() : options.storage
-  const geolocation = options.geolocation === undefined
-    ? getBrowserGeolocation()
-    : options.geolocation
   const now = options.now ?? getCurrentDate
   const routesApiKey = options.routesApiKey
     ?? import.meta.env.VITE_GOOGLE_ROUTES_API_KEY
@@ -133,8 +87,6 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
   const [plan, setPlan] = useState<TrafficPlan | null>(null)
   const [status, setStatus] = useState<TrafficPlanStatus>('idle')
   const [error, setError] = useState<string | null>(null)
-  const [needsManualOrigin, setNeedsManualOrigin] = useState(false)
-  const [manualOrigin, setManualOriginState] = useState('')
 
   const requestSequenceRef = useRef(0)
   const pendingRef = useRef(false)
@@ -177,18 +129,21 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     updatePreferences((current) => ({ ...current, homeAddress }))
   }, [updatePreferences])
 
-  const setArrivalTime = useCallback((arrivalTime: string) => {
-    updatePreferences((current) => ({ ...current, arrivalTime }))
+  const setHomeArrivalTime = useCallback((homeArrivalTime: string) => {
+    updatePreferences((current) => ({ ...current, homeArrivalTime }))
+  }, [updatePreferences])
+
+  const setWorkAddress = useCallback((workAddress: string) => {
+    updatePreferences((current) => ({ ...current, workAddress }))
+  }, [updatePreferences])
+
+  const setWorkArrivalTime = useCallback((workArrivalTime: string) => {
+    updatePreferences((current) => ({ ...current, workArrivalTime }))
   }, [updatePreferences])
 
   const setCushionMinutes = useCallback((cushionMinutes: TrafficCushionMinutes) => {
     updatePreferences((current) => ({ ...current, cushionMinutes }))
   }, [updatePreferences])
-
-  const setManualOrigin = useCallback((value: string) => {
-    invalidatePlan()
-    setManualOriginState(value)
-  }, [invalidatePlan])
 
   const calculateInternal = useCallback(async (
     calculateOptions: InternalCalculateTrafficOptions = {},
@@ -204,30 +159,21 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
       return false
     }
 
-    const homeAddress = preferences.homeAddress.trim()
-    if (!homeAddress) {
-      if (!automatic) {
-        setStatus('error')
-        setError('Enter your Home address before calculating the drive.')
-      }
-      return false
-    }
-
     const calculationStartedAt = now()
-    let desiredArrival: Date
+    let drive
     try {
-      desiredArrival = getTodayArrival(preferences.arrivalTime, calculationStartedAt)
-    } catch (arrivalError) {
+      drive = getPlannedTrafficDrive(preferences, calculationStartedAt)
+    } catch (driveError) {
       if (!automatic) {
         setStatus('error')
-        setError(getErrorMessage(arrivalError))
+        setError(getErrorMessage(driveError))
       }
       return false
     }
-    if (desiredArrival.getTime() <= calculationStartedAt.getTime()) {
+    if (!drive.originAddress || !drive.destinationAddress) {
       if (!automatic) {
         setStatus('error')
-        setError('That arrival time has already passed. Choose a later time today.')
+        setError('Enter both your Home and Work addresses before calculating the drive.')
       }
       return false
     }
@@ -237,66 +183,10 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     pendingRef.current = true
     lastRefreshAttemptRef.current = calculationStartedAt.getTime()
 
-    let origin: TrafficOrigin
+    const origin: TrafficOrigin = { kind: 'address', address: drive.originAddress }
     let routeTimedOut = false
     let routeTimeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
     try {
-      if (automatic) {
-        const previousOrigin = lastOriginRef.current
-        if (!previousOrigin) return false
-        if (previousOrigin.kind === 'address') {
-          origin = previousOrigin
-        } else {
-          if (!geolocation) {
-            setNeedsManualOrigin(true)
-            setStatus('error')
-            setError(locationMessage)
-            return false
-          }
-          try {
-            origin = await requestCoordinates(geolocation)
-          } catch (locationError) {
-            if (requestId !== requestSequenceRef.current) return false
-            setNeedsManualOrigin(true)
-            setStatus('error')
-            setError(isPermissionDenied(locationError)
-              ? deniedLocationMessage
-              : locationMessage)
-            return false
-          }
-        }
-      } else if (calculateOptions.useManualOrigin) {
-        const address = manualOrigin.trim()
-        if (!address) {
-          setNeedsManualOrigin(true)
-          setStatus('error')
-          setError('Enter a starting address before calculating the drive.')
-          return false
-        }
-        origin = { kind: 'address', address }
-      } else {
-        setStatus('locating')
-        setError(null)
-        if (!geolocation) {
-          setNeedsManualOrigin(true)
-          setStatus('error')
-          setError(locationMessage)
-          return false
-        }
-
-        try {
-          origin = await requestCoordinates(geolocation)
-        } catch (locationError) {
-          if (requestId !== requestSequenceRef.current) return false
-          setNeedsManualOrigin(true)
-          setStatus('error')
-          setError(isPermissionDenied(locationError)
-            ? deniedLocationMessage
-            : locationMessage)
-          return false
-        }
-      }
-
       if (requestId !== requestSequenceRef.current) return false
 
       const controller = new AbortController()
@@ -310,8 +200,8 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
 
       const nextPlan = await solveTrafficRoute({
         origin,
-        homeAddress,
-        desiredArrival,
+        homeAddress: drive.destinationAddress,
+        desiredArrival: drive.desiredArrival,
         bufferMinutes: preferences.cushionMinutes,
         apiKey: routesApiKey,
         seedDurationSeconds: plan?.durationSeconds,
@@ -326,7 +216,6 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
       setPlan(nextPlan)
       setStatus('ready')
       setError(null)
-      setNeedsManualOrigin(false)
       return true
     } catch (calculationError) {
       if (requestId !== requestSequenceRef.current) {
@@ -350,9 +239,7 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
       }
     }
   }, [
-    geolocation,
     isConfigured,
-    manualOrigin,
     now,
     options.fetchImpl,
     plan?.durationSeconds,
@@ -360,10 +247,7 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     routesApiKey,
   ])
 
-  const calculate = useCallback(
-    (calculateOptions?: CalculateTrafficOptions) => calculateInternal(calculateOptions),
-    [calculateInternal],
-  )
+  const calculate = useCallback(() => calculateInternal(), [calculateInternal])
 
   const reset = useCallback(() => {
     cancelPendingRequest()
@@ -372,8 +256,6 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     setPlan(null)
     setStatus('idle')
     setError(null)
-    setNeedsManualOrigin(false)
-    setManualOriginState('')
     lastOriginRef.current = null
     lastRefreshAttemptRef.current = 0
     hiddenSinceRef.current = null
@@ -459,21 +341,22 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
 
   const isStale = plan !== null
     && now().getTime() - Date.parse(plan.fetchedAt) >= autoRefreshMs
+  const drive = getPlannedTrafficDrive(preferences, now())
 
   return {
     preferences,
+    drive,
     plan,
     mapUrl,
     status,
     error,
-    needsManualOrigin,
-    manualOrigin,
     isConfigured,
     isStale,
     setHomeAddress,
-    setArrivalTime,
+    setHomeArrivalTime,
+    setWorkAddress,
+    setWorkArrivalTime,
     setCushionMinutes,
-    setManualOrigin,
     calculate,
     reset,
   }

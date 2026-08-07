@@ -7,6 +7,7 @@ import {
   TrafficError,
   buildStaticMapUrl,
   clearTrafficPreferences,
+  getPlannedTrafficDrive,
   getTodayArrival,
   loadTrafficPreferences,
   saveTrafficPreferences,
@@ -126,9 +127,11 @@ describe('traffic preferences storage', () => {
     first.homeAddress = 'Changed locally'
 
     expect(loadTrafficPreferences(new CountingStorage())).toEqual({
-      version: 1,
+      version: 2,
       homeAddress: '',
-      arrivalTime: '18:00',
+      homeArrivalTime: '18:00',
+      workAddress: '',
+      workArrivalTime: '09:00',
       cushionMinutes: 5,
     })
     expect(loadTrafficPreferences(null)).toEqual(DEFAULT_TRAFFIC_PREFERENCES)
@@ -138,9 +141,11 @@ describe('traffic preferences storage', () => {
   it('round-trips only user inputs, normalizes Home, and avoids duplicate writes', () => {
     const storage = new CountingStorage()
     const preferences: TrafficPreferences = {
-      version: 1,
+      version: 2,
       homeAddress: '  100   Example Avenue  ',
-      arrivalTime: '17:45',
+      homeArrivalTime: '17:45',
+      workAddress: '  200   Example Work Way  ',
+      workArrivalTime: '08:45',
       cushionMinutes: 10,
     }
 
@@ -148,12 +153,15 @@ describe('traffic preferences storage', () => {
     expect(saveTrafficPreferences({
       ...preferences,
       homeAddress: '100 Example Avenue',
+      workAddress: '200 Example Work Way',
     }, storage)).toBe(false)
     expect(storage.writes).toBe(1)
     expect(loadTrafficPreferences(storage)).toEqual({
-      version: 1,
+      version: 2,
       homeAddress: '100 Example Avenue',
-      arrivalTime: '17:45',
+      homeArrivalTime: '17:45',
+      workAddress: '200 Example Work Way',
+      workArrivalTime: '08:45',
       cushionMinutes: 10,
     })
 
@@ -161,15 +169,36 @@ describe('traffic preferences storage', () => {
       storage.getItem(TRAFFIC_PREFERENCES_STORAGE_KEY) ?? '{}',
     ) as Record<string, unknown>
     expect(persisted).toEqual({
-      version: 1,
+      version: 2,
       homeAddress: '100 Example Avenue',
-      arrivalTime: '17:45',
+      homeArrivalTime: '17:45',
+      workAddress: '200 Example Work Way',
+      workArrivalTime: '08:45',
       cushionMinutes: 10,
     })
     expect(persisted).not.toHaveProperty('origin')
     expect(persisted).not.toHaveProperty('route')
     expect(persisted).not.toHaveProperty('latitude')
     expect(persisted).not.toHaveProperty('leaveBy')
+  })
+
+  it('migrates the original Home-only schedule without losing its address or arrival time', () => {
+    const storage = new CountingStorage()
+    storage.setItem(TRAFFIC_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      homeAddress: '100 Example Avenue',
+      arrivalTime: '18:15',
+      cushionMinutes: 10,
+    }))
+
+    expect(loadTrafficPreferences(storage)).toEqual({
+      version: 2,
+      homeAddress: '100 Example Avenue',
+      homeArrivalTime: '18:15',
+      workAddress: '',
+      workArrivalTime: '09:00',
+      cushionMinutes: 10,
+    })
   })
 
   it.each([
@@ -227,6 +256,37 @@ describe('today arrival time', () => {
 
   it.each(['', '9:30', '09:3', '24:00', '12:60'])('rejects invalid clock value %s', (value) => {
     expect(() => getTodayArrival(value, dateAt(8))).toThrowError(TrafficError)
+  })
+})
+
+describe('day-aware commute selection', () => {
+  const preferences: TrafficPreferences = {
+    version: 2,
+    homeAddress: 'Home',
+    homeArrivalTime: '18:00',
+    workAddress: 'Work',
+    workArrivalTime: '09:00',
+    cushionMinutes: 5,
+  }
+
+  it('plans tomorrow morning after an evening at home', () => {
+    const drive = getPlannedTrafficDrive(preferences, new Date(2026, 7, 6, 19, 0))
+    expect(drive).toMatchObject({
+      dayLabel: 'Tomorrow',
+      routeLabel: 'Home to Work',
+      originAddress: 'Home',
+      destinationAddress: 'Work',
+    })
+    expect(drive.desiredArrival).toEqual(new Date(2026, 7, 7, 9, 0))
+  })
+
+  it('switches to work-to-home after the morning commute and skips weekends', () => {
+    expect(getPlannedTrafficDrive(preferences, new Date(2026, 7, 6, 12, 0))).toMatchObject({
+      dayLabel: 'Today', routeLabel: 'Work to Home', originAddress: 'Work', destinationAddress: 'Home',
+    })
+    expect(getPlannedTrafficDrive(preferences, new Date(2026, 7, 8, 12, 0))).toMatchObject({
+      dayLabel: 'Monday', routeLabel: 'Home to Work',
+    })
   })
 })
 
@@ -397,7 +457,7 @@ describe('Google traffic route solving', () => {
       desiredArrival: dateAt(11),
     }))).rejects.toMatchObject({ code: 'past-arrival' })
     await expect(solveTrafficRoute(makeSolveOptions(fetchMock, {
-      desiredArrival: new Date(2026, 7, 7, 18),
+      desiredArrival: new Date('invalid'),
     }))).rejects.toMatchObject({ code: 'invalid-arrival' })
     await expect(solveTrafficRoute(makeSolveOptions(fetchMock, {
       bufferMinutes: 7 as 5,

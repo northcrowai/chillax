@@ -482,8 +482,8 @@ export function App() {
       artist: 'Chillax Focus',
       album: preset.sound,
       artwork: [
-        { src: assetPath('/pwa-192x192.png'), sizes: '192x192', type: 'image/png' },
-        { src: assetPath('/pwa-512x512.png'), sizes: '512x512', type: 'image/png' },
+        { src: assetPath('/north-crow-mobile-192.png'), sizes: '192x192', type: 'image/png' },
+        { src: assetPath('/north-crow-mobile-512.png'), sizes: '512x512', type: 'image/png' },
       ],
     })
     navigator.mediaSession.playbackState = sessionIsRunning ? 'playing' : 'paused'
@@ -678,26 +678,24 @@ export function App() {
           />
         ) : (
           <TrafficPage
-            arrivalTime={traffic.preferences.arrivalTime}
-            configurationMessage="Traffic is not connected on this deployment yet. Focus and Weather still work normally."
+            configurationMessage="Traffic needs Google Maps browser keys before routes can be calculated."
             configurationMissing={!traffic.isConfigured}
             cushionMinutes={traffic.preferences.cushionMinutes}
+            drive={traffic.drive}
             errorMessage={traffic.error}
             headingRef={trafficHeadingRef}
             homeAddress={traffic.preferences.homeAddress}
+            homeArrivalTime={traffic.preferences.homeArrivalTime}
             isAudioBusy={audioIsBusy}
-            manualOrigin={traffic.manualOrigin}
             mapUrl={traffic.mapUrl}
-            needsManualOrigin={traffic.needsManualOrigin}
-            onArrivalTimeChange={traffic.setArrivalTime}
-            onCalculate={(request) => {
-              void traffic.calculate(request)
-            }}
+            onCalculate={() => { void traffic.calculate() }}
             onCushionMinutesChange={traffic.setCushionMinutes}
             onHomeAddressChange={traffic.setHomeAddress}
-            onManualOriginChange={traffic.setManualOrigin}
+            onHomeArrivalTimeChange={traffic.setHomeArrivalTime}
             onReturnToFocus={showFocusView}
             onTogglePlayback={() => void handleTogglePlayback()}
+            onWorkAddressChange={traffic.setWorkAddress}
+            onWorkArrivalTimeChange={traffic.setWorkArrivalTime}
             plan={traffic.plan}
             playbackSessionName={playbackSessionName}
             presetName={preset.name}
@@ -705,6 +703,8 @@ export function App() {
             status={traffic.status}
             timerDisplay={timerDisplay}
             timerStatus={timerSnapshot.status}
+            workAddress={traffic.preferences.workAddress}
+            workArrivalTime={traffic.preferences.workArrivalTime}
           />
         )}
 
