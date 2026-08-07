@@ -1,7 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
+import { FOCUS_QUOTES } from './data/quotes'
+import { WEATHER_PHOTO_PREFERENCES_STORAGE_KEY } from './data/weatherPhotos'
 import { STORAGE_KEY } from './lib/storage'
+import { TRAFFIC_PREFERENCES_STORAGE_KEY } from './lib/traffic'
 
 const audioMocks = vi.hoisted(() => ({
   clearError: vi.fn(),
@@ -38,6 +41,8 @@ vi.mock('./pwa', () => ({
 
 describe('Chillax app', () => {
   beforeEach(() => {
+    vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/')
     window.localStorage.clear()
     audioHookState.fatalErrorVersion = 0
     vi.clearAllMocks()
@@ -46,13 +51,105 @@ describe('Chillax app', () => {
   it('renders the clean 60-minute default experience', () => {
     render(<App />)
 
-    expect(screen.getByRole('heading', { name: 'Find your quiet.' })).toBeInTheDocument()
+    expect(screen.getByText('Find your quiet.')).toBeInTheDocument()
+    const quoteHeading = screen.getByRole('heading', { level: 1 })
+    expect(FOCUS_QUOTES.some((quote) => quoteHeading.textContent === `“${quote.text}”`)).toBe(true)
     expect(screen.getByRole('button', { name: 'Start focus session' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Focus timer' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Open weather' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open traffic' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Standard: Balanced/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: '60 minutes' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByLabelText('60:00 remaining')).toBeInTheDocument()
     expect(screen.queryByText('One uninterrupted hour')).not.toBeInTheDocument()
+  })
+
+  it('keeps the active timer and audio controls alive while weather is open', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Offline test')))
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start focus session' }))
+    await screen.findByRole('button', { name: 'Pause focus session' })
+    vi.clearAllMocks()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open weather' }))
+
+    expect(window.location.pathname).toBe('/weather')
+    await waitFor(() => expect(
+      screen.getByRole('heading', { level: 1, name: /Weather in Tierrasanta/ }),
+    ).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Close weather and return to focus' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Open traffic' })).toBeEnabled()
+    expect(screen.getByLabelText(/on the Chillax timer/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
+    expect(audioMocks.pause).not.toHaveBeenCalled()
+    expect(audioMocks.stop).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to focus' }))
+
+    expect(window.location.pathname).toBe('/')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
+    expect(audioMocks.pause).not.toHaveBeenCalled()
+    expect(audioMocks.stop).not.toHaveBeenCalled()
+  })
+
+  it('keeps the active timer and audio controls alive while traffic is open', async () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start focus session' }))
+    await screen.findByRole('button', { name: 'Pause focus session' })
+    vi.clearAllMocks()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open traffic' }))
+
+    expect(window.location.pathname).toBe('/traffic')
+    await waitFor(() => expect(
+      screen.getByRole('heading', { level: 1, name: 'Get home on time.' }),
+    ).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Close traffic and return to focus' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByText(/Traffic is not connected on this deployment yet/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/on the Chillax timer/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
+    expect(audioMocks.pause).not.toHaveBeenCalled()
+    expect(audioMocks.stop).not.toHaveBeenCalled()
+
+    fireEvent.input(screen.getByRole('textbox', { name: 'Home' }), {
+      target: { value: '100 Example Avenue' },
+    })
+    fireEvent.input(screen.getByLabelText('Be home by'), { target: { value: '20:15' } })
+    fireEvent.click(screen.getByRole('button', { name: '10 minute arrival cushion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enter a location' }))
+    fireEvent.input(screen.getByRole('textbox', { name: 'Where are you leaving from?' }), {
+      target: { value: '200 Sample Street' },
+    })
+
+    await waitFor(() => {
+      const saved = JSON.parse(
+        window.localStorage.getItem(TRAFFIC_PREFERENCES_STORAGE_KEY) ?? '{}',
+      )
+      expect(saved).toEqual({
+        version: 1,
+        homeAddress: '100 Example Avenue',
+        arrivalTime: '20:15',
+        cushionMinutes: 10,
+      })
+      expect(saved).not.toHaveProperty('manualOrigin')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to focus' }))
+    expect(window.location.pathname).toBe('/')
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus())
+    expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
+    expect(audioMocks.pause).not.toHaveBeenCalled()
+    expect(audioMocks.stop).not.toHaveBeenCalled()
   })
 
   it('changes and persists the selected soundscape, texture, and session', async () => {
@@ -205,6 +302,17 @@ describe('Chillax app', () => {
 
   it('opens settings and restores defaults', async () => {
     render(<App />)
+    window.localStorage.setItem(WEATHER_PHOTO_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      enabled: false,
+      favorites: { 'clear:morning': 'clear-day' },
+      version: 1,
+    }))
+    window.localStorage.setItem(TRAFFIC_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      homeAddress: '100 Example Avenue',
+      arrivalTime: '20:15',
+      cushionMinutes: 5,
+    }))
 
     fireEvent.click(screen.getByRole('button', { name: /Flow State:/ }))
     const settingsButton = screen.getByRole('button', { name: 'Open settings' })
@@ -225,6 +333,8 @@ describe('Chillax app', () => {
     expect(screen.getByRole('button', { name: /Deep Work:/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: '60 minutes' })).toHaveAttribute('aria-pressed', 'true')
     expect(audioMocks.stop).toHaveBeenCalled()
+    expect(window.localStorage.getItem(WEATHER_PHOTO_PREFERENCES_STORAGE_KEY)).toBeNull()
+    expect(window.localStorage.getItem(TRAFFIC_PREFERENCES_STORAGE_KEY)).toBeNull()
     await waitFor(() => expect(settingsButton).toHaveFocus())
 
     await waitFor(() => {

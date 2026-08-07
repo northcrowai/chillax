@@ -182,7 +182,12 @@ export function SettingsDialog({
 
         <div class="privacy-note">
           <strong>Private by design</strong>
-          <p>Your settings stay in this browser. Recorded sounds stream from this same app; Chillax has no account, analytics, cookies, or remote settings storage.</p>
+          <p>Your settings, searched weather place, and Traffic preferences stay in this browser. Chillax has no account, analytics, cookies, or remote settings storage. Weather and Traffic send only the location data needed for the feature you choose; precise GPS coordinates and route results are never saved.</p>
+          <p>
+            <a href="/privacy" rel="noreferrer" target="_blank">Privacy</a>
+            {' · '}
+            <a href="/terms" rel="noreferrer" target="_blank">Terms</a>
+          </p>
         </div>
 
         <button class="text-action text-action--danger" onClick={onResetPreferences} type="button">

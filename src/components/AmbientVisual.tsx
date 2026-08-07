@@ -359,6 +359,7 @@ export function AmbientVisual({ intensity, isPlaying, preset, theme }: AmbientVi
       aria-hidden="true"
       class={`ambient-visual ambient-visual--${preset}${isPlaying ? ' is-playing' : ''}`}
     >
+      <span class="ambient-visual__stars" />
       <span class="ambient-visual__aura" />
       <span class="ambient-visual__fallback-orb" />
       <canvas class="ambient-visual__canvas" ref={canvasRef} />

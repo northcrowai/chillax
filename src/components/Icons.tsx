@@ -127,6 +127,124 @@ export function InstallIcon(props: IconProps) {
   )
 }
 
+export function TimerIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <circle cx="12" cy="13" r="7" stroke="currentColor" stroke-width="1.8" />
+      <path
+        d="M9 3h6M12 6V3M12 10v3.4l2.4 1.5"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
+export function CloudIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M7.2 18h10.2a4.1 4.1 0 0 0 .7-8.1A6.3 6.3 0 0 0 6 8.6 4.8 4.8 0 0 0 7.2 18Z"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
+export function TrafficIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M6.5 20 9.4 4M17.5 20 14.6 4M12 5.5v3M12 11v3M12 16.5v2"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+      <path d="M4.5 20h15" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+    </svg>
+  )
+}
+
+export function LocationIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+      <circle cx="12" cy="10" r="2.2" stroke="currentColor" stroke-width="1.8" />
+    </svg>
+  )
+}
+
+export function RefreshIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M18.2 8.1A7 7 0 1 0 19 13"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-width="1.8"
+      />
+      <path
+        d="M18.5 4.8v4h-4"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
+export function PhotoIcon(props: IconProps) {
+  return (
+    <svg {...iconProps} {...props}>
+      <rect
+        height="15"
+        rx="2.5"
+        stroke="currentColor"
+        stroke-width="1.8"
+        width="18"
+        x="3"
+        y="4.5"
+      />
+      <circle cx="8.3" cy="9.1" r="1.6" fill="currentColor" />
+      <path
+        d="m4.8 17 4.4-4.2 2.7 2.5 2.9-3 4.4 4.7"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
+export function HeartIcon({ filled = false, ...props }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path
+        d="M20.8 8.7c0 5.2-8.8 10.1-8.8 10.1S3.2 13.9 3.2 8.7A4.5 4.5 0 0 1 12 7.4a4.5 4.5 0 0 1 8.8 1.3Z"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+      />
+    </svg>
+  )
+}
+
 export function CloseIcon(props: IconProps) {
   return (
     <svg {...iconProps} {...props}>

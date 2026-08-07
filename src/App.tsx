@@ -2,19 +2,33 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { AmbientVisual } from './components/AmbientVisual'
 import { Brand } from './components/Brand'
 import { CustomSessionDialog } from './components/CustomSessionDialog'
-import { InstallIcon, MoonIcon, SettingsIcon, SunIcon } from './components/Icons'
+import {
+  CloudIcon,
+  InstallIcon,
+  MoonIcon,
+  SettingsIcon,
+  SunIcon,
+  TimerIcon,
+  TrafficIcon,
+} from './components/Icons'
 import { IntensitySelector } from './components/IntensitySelector'
+import { LeaveByClock } from './components/LeaveByClock'
 import { PlaybackControls } from './components/PlaybackControls'
 import { PresetSelector } from './components/PresetSelector'
 import { SessionSelector } from './components/SessionSelector'
 import { SettingsDialog } from './components/SettingsDialog'
 import { TimerDisplay } from './components/TimerDisplay'
+import { TrafficPage } from './components/TrafficPage'
 import { VolumeControl } from './components/VolumeControl'
+import { WeatherPage } from './components/WeatherPage'
+import { getRandomFocusQuote } from './data/quotes'
 import { getPreset } from './data/presets'
+import { clearWeatherPhotoPreferences } from './data/weatherPhotos'
 import { useFocusAudio } from './hooks/useFocusAudio'
 import { useFocusTimer } from './hooks/useFocusTimer'
 import { usePomodoroTimer } from './hooks/usePomodoroTimer'
 import { usePwaInstall } from './hooks/usePwaInstall'
+import { useTrafficPlan } from './hooks/useTrafficPlan'
 import { useWakeLock } from './hooks/useWakeLock'
 import { DEFAULT_POMODORO_CONFIG } from './lib/pomodoro'
 import { DEFAULT_SESSION_PLAN, createSessionPlan, resolveSessionPlan } from './lib/session'
@@ -25,6 +39,7 @@ import {
   savePreferences,
   saveSessionPlan,
 } from './lib/storage'
+import { clearWeatherPreferences } from './lib/weather'
 import { isChillaxOfflineReady, registerChillaxServiceWorker } from './pwa'
 import type {
   Intensity,
@@ -39,6 +54,15 @@ import type {
 } from './types'
 
 const FOOTER_FACTS = ['15 soundscapes', '19.2 MB open audio pack', 'No analytics'] as const
+
+type AppView = 'focus' | 'traffic' | 'weather'
+
+const getInitialView = (): AppView => {
+  if (typeof window === 'undefined') return 'focus'
+  if (/^\/weather\/?$/.test(window.location.pathname)) return 'weather'
+  if (/^\/traffic\/?$/.test(window.location.pathname)) return 'traffic'
+  return 'focus'
+}
 
 const POMODORO_PLAYBACK_NAMES: Readonly<Record<PomodoroPhase, string>> = {
   focus: 'focus session',
@@ -82,8 +106,10 @@ const getPomodoroStatusText = (status: TimerStatus, phase: PomodoroPhase) => {
 
 export function App() {
   const [initialState] = useState(loadStoredState)
+  const [focusQuote] = useState(getRandomFocusQuote)
   const [preferences, setPreferences] = useState<PreferencesV2>(initialState.preferences)
   const [sessionPlan, setSessionPlan] = useState<SessionPlanV1>(initialState.sessionPlan)
+  const [activeView, setActiveView] = useState<AppView>(getInitialView)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [customSessionOpen, setCustomSessionOpen] = useState(false)
   const [offlineReady, setOfflineReady] = useState(false)
@@ -91,6 +117,10 @@ export function App() {
   const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
   const customSessionButtonRef = useRef<HTMLButtonElement>(null)
+  const focusHeadingRef = useRef<HTMLHeadingElement>(null)
+  const trafficHeadingRef = useRef<HTMLHeadingElement>(null)
+  const weatherHeadingRef = useRef<HTMLHeadingElement>(null)
+  const previousViewRef = useRef(activeView)
   const playbackPendingRef = useRef(false)
   const handledFatalErrorRef = useRef(0)
   const {
@@ -117,6 +147,23 @@ export function App() {
     setCustomSessionOpen(false)
     window.requestAnimationFrame(() => customSessionButtonRef.current?.focus())
   }, [])
+
+  const navigateToView = useCallback((view: AppView) => {
+    setActiveView(view)
+    const nextPath = view === 'focus' ? '/' : `/${view}`
+    if (window.location.pathname !== nextPath) {
+      const updateHistory = view === 'focus' ? 'replaceState' : 'pushState'
+      window.history[updateHistory]({ chillaxView: view }, '', nextPath)
+    }
+  }, [])
+
+  const showFocusView = useCallback(() => navigateToView('focus'), [navigateToView])
+  const toggleWeatherView = useCallback(() => {
+    navigateToView(activeView === 'weather' ? 'focus' : 'weather')
+  }, [activeView, navigateToView])
+  const toggleTrafficView = useCallback(() => {
+    navigateToView(activeView === 'traffic' ? 'focus' : 'traffic')
+  }, [activeView, navigateToView])
 
   const updatePreference = useCallback(<Key extends keyof PreferencesV2>(
     key: Key,
@@ -165,6 +212,8 @@ export function App() {
   const dialogOpen = settingsOpen || customSessionOpen
   const wakeLock = useWakeLock(preferences.wakeLockEnabled && sessionIsRunning)
   const pwaInstall = usePwaInstall()
+  const traffic = useTrafficPlan({ theme: preferences.theme })
+  const resetTraffic = traffic.reset
 
   const preset = getPreset(preferences.preset)
   const timerDisplay = formatTimer(timerSnapshot.displayMs, timerSnapshot.mode === 'endless')
@@ -201,6 +250,26 @@ export function App() {
   }, [sessionPlan])
 
   useEffect(() => {
+    const handlePopState = () => setActiveView(getInitialView())
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    if (previousViewRef.current === activeView) return
+    previousViewRef.current = activeView
+    const frame = window.requestAnimationFrame(() => {
+      const heading = activeView === 'weather'
+        ? weatherHeadingRef.current
+        : activeView === 'traffic'
+          ? trafficHeadingRef.current
+          : focusHeadingRef.current
+      heading?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeView])
+
+  useEffect(() => {
     document.documentElement.dataset.theme = preferences.theme
     document.documentElement.style.colorScheme = preferences.theme
     const themeColor = preferences.theme === 'dark' ? '#16071b' : '#f7f3ed'
@@ -228,8 +297,12 @@ export function App() {
   useEffect(() => {
     document.title = sessionIsRunning
       ? `${timerDisplay} · ${preset.name} · ${sessionLabel} · Chillax`
-      : 'Chillax — Find your quiet'
-  }, [preset.name, sessionIsRunning, sessionLabel, timerDisplay])
+      : activeView === 'weather'
+        ? 'Weather · Chillax'
+        : activeView === 'traffic'
+          ? 'Traffic · Chillax'
+          : 'Chillax — Find your quiet'
+  }, [activeView, preset.name, sessionIsRunning, sessionLabel, timerDisplay])
 
   const handleTogglePlayback = useCallback(async () => {
     if (audioIsBusy || playbackPendingRef.current) return
@@ -339,6 +412,9 @@ export function App() {
 
   const handleResetPreferences = useCallback(() => {
     clearStoredState()
+    clearWeatherPreferences()
+    clearWeatherPhotoPreferences()
+    resetTraffic()
     setPreferences({ ...DEFAULT_PREFERENCES })
     setSessionPlan({ ...DEFAULT_SESSION_PLAN })
     const defaultSession = resolveSessionPlan(DEFAULT_SESSION_PLAN)
@@ -347,8 +423,9 @@ export function App() {
     }
     configurePomodoroTimer({ ...DEFAULT_POMODORO_CONFIG })
     void stopAudio()
+    showFocusView()
     closeSettings()
-  }, [closeSettings, configurePomodoroTimer, resetFocusTimer, stopAudio])
+  }, [closeSettings, configurePomodoroTimer, resetFocusTimer, resetTraffic, showFocusView, stopAudio])
 
   const handleWakeLockChange = useCallback((enabled: boolean) => {
     updatePreference('wakeLockEnabled', enabled)
@@ -416,14 +493,38 @@ export function App() {
         inert={dialogOpen || undefined}
       >
         <header class="app-header">
-          <Brand />
+          <Brand onNavigateHome={showFocusView} />
           <div class="header-actions">
-            {pwaInstall.canInstall ? (
-              <button class="header-action" onClick={() => void pwaInstall.install()} type="button">
-                <InstallIcon />
-                <span>Install app</span>
-              </button>
-            ) : null}
+            <button
+              aria-label={activeView === 'focus' ? 'Focus timer' : 'Return to focus timer'}
+              aria-pressed={activeView === 'focus'}
+              class="icon-button"
+              onClick={showFocusView}
+              title="Focus timer"
+              type="button"
+            >
+              <TimerIcon />
+            </button>
+            <button
+              aria-label={activeView === 'weather' ? 'Close weather and return to focus' : 'Open weather'}
+              aria-pressed={activeView === 'weather'}
+              class="icon-button"
+              onClick={toggleWeatherView}
+              title={activeView === 'weather' ? 'Back to focus' : 'Weather'}
+              type="button"
+            >
+              <CloudIcon />
+            </button>
+            <button
+              aria-label={activeView === 'traffic' ? 'Close traffic and return to focus' : 'Open traffic'}
+              aria-pressed={activeView === 'traffic'}
+              class="icon-button"
+              onClick={toggleTrafficView}
+              title={activeView === 'traffic' ? 'Back to focus' : 'Traffic'}
+              type="button"
+            >
+              <TrafficIcon />
+            </button>
             <button
               aria-label={`Switch to ${preferences.theme === 'light' ? 'dark' : 'light'} theme`}
               class="icon-button"
@@ -441,10 +542,20 @@ export function App() {
             >
               <SettingsIcon />
             </button>
+            {traffic.plan ? (
+              <LeaveByClock
+                departureTime={traffic.status === 'error' && traffic.isStale
+                  ? null
+                  : traffic.plan.leaveBy}
+                expiresAt={traffic.plan.desiredArrivalTime}
+                leaveNow={traffic.plan.leaveNow}
+              />
+            ) : null}
           </div>
         </header>
 
-        <main class="app-main">
+        {activeView === 'focus' ? (
+          <main class="app-main">
           <section class="focus-stage" aria-label="Focus session player">
             <div class="visual-panel">
               <div class="visual-panel__topline">
@@ -470,10 +581,23 @@ export function App() {
             </div>
 
             <div class="session-panel">
-              <header class="intro" aria-labelledby="page-title">
-                <span class="eyebrow">Your quiet corner</span>
-                <h1 id="page-title">Find your quiet.</h1>
-                <p>Choose an atmosphere, set your time, and let everything else fall away.</p>
+              <header class="intro intro--quote" aria-labelledby="page-title">
+                <span class="eyebrow">Find your quiet.</span>
+                <blockquote>
+                  <h1 id="page-title" ref={focusHeadingRef} tabIndex={-1}>“{focusQuote.text}”</h1>
+                  <footer>
+                    <a
+                      aria-label={`Source for quote by ${focusQuote.author}`}
+                      href={focusQuote.sourceUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <cite>{focusQuote.author}</cite>
+                    </a>
+                    <span> · {focusQuote.work}</span>
+                  </footer>
+                </blockquote>
+                <p class="intro__guidance">Choose an atmosphere, set your time, and let everything else fall away.</p>
               </header>
 
               <TimerDisplay
@@ -522,10 +646,59 @@ export function App() {
             onChange={handlePresetChange}
             value={preferences.preset}
           />
-        </main>
+          </main>
+        ) : activeView === 'weather' ? (
+          <WeatherPage
+            headingRef={weatherHeadingRef}
+            isAudioBusy={audioIsBusy}
+            onReturnToFocus={showFocusView}
+            onTogglePlayback={() => void handleTogglePlayback()}
+            playbackSessionName={playbackSessionName}
+            presetName={preset.name}
+            sessionLabel={sessionLabel}
+            timerDisplay={timerDisplay}
+            timerStatus={timerSnapshot.status}
+          />
+        ) : (
+          <TrafficPage
+            arrivalTime={traffic.preferences.arrivalTime}
+            configurationMessage="Traffic is not connected on this deployment yet. Focus and Weather still work normally."
+            configurationMissing={!traffic.isConfigured}
+            cushionMinutes={traffic.preferences.cushionMinutes}
+            errorMessage={traffic.error}
+            headingRef={trafficHeadingRef}
+            homeAddress={traffic.preferences.homeAddress}
+            isAudioBusy={audioIsBusy}
+            manualOrigin={traffic.manualOrigin}
+            mapUrl={traffic.mapUrl}
+            needsManualOrigin={traffic.needsManualOrigin}
+            onArrivalTimeChange={traffic.setArrivalTime}
+            onCalculate={(request) => {
+              void traffic.calculate(request)
+            }}
+            onCushionMinutesChange={traffic.setCushionMinutes}
+            onHomeAddressChange={traffic.setHomeAddress}
+            onManualOriginChange={traffic.setManualOrigin}
+            onReturnToFocus={showFocusView}
+            onTogglePlayback={() => void handleTogglePlayback()}
+            plan={traffic.plan}
+            playbackSessionName={playbackSessionName}
+            presetName={preset.name}
+            sessionLabel={sessionLabel}
+            status={traffic.status}
+            timerDisplay={timerDisplay}
+            timerStatus={timerSnapshot.status}
+          />
+        )}
 
         <footer class="app-footer">
           <div class="app-footer__facts">
+            {pwaInstall.canInstall ? (
+              <button class="app-footer__install" onClick={() => void pwaInstall.install()} type="button">
+                <InstallIcon />
+                Install app
+              </button>
+            ) : null}
             {FOOTER_FACTS.map((fact) => <span key={fact}>{fact}</span>)}
           </div>
           <span class="keyboard-hint"><kbd>Space</kbd> play / <kbd>M</kbd> mute</span>

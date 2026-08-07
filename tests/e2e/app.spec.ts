@@ -1,5 +1,46 @@
 import { expect, test } from '@playwright/test'
 
+const makeWeatherResponse = () => ({
+  latitude: 32.82,
+  longitude: -117.1,
+  timezone: 'America/Los_Angeles',
+  timezone_abbreviation: 'PDT',
+  current: {
+    time: '2026-08-06T15:00',
+    temperature_2m: 84,
+    apparent_temperature: 86,
+    relative_humidity_2m: 52,
+    precipitation: 0,
+    weather_code: 2,
+    is_day: 1,
+    wind_speed_10m: 7,
+    wind_direction_10m: 270,
+    wind_gusts_10m: 12,
+  },
+  hourly: {
+    time: Array.from({ length: 24 }, (_, index) =>
+      `2026-08-06T${String(index).padStart(2, '0')}:00`),
+    temperature_2m: Array.from({ length: 24 }, (_, index) => 70 + index / 2),
+    apparent_temperature: Array.from({ length: 24 }, (_, index) => 70 + index / 2),
+    precipitation_probability: Array.from({ length: 24 }, (_, index) => index),
+    weather_code: Array.from({ length: 24 }, () => 2),
+    wind_speed_10m: Array.from({ length: 24 }, () => 7),
+  },
+  daily: {
+    time: Array.from({ length: 6 }, (_, index) =>
+      `2026-08-${String(index + 6).padStart(2, '0')}`),
+    weather_code: [2, 1, 0, 3, 61, 2],
+    temperature_2m_max: [84, 86, 85, 82, 78, 80],
+    temperature_2m_min: [68, 69, 70, 68, 66, 67],
+    precipitation_probability_max: [5, 4, 2, 10, 55, 8],
+    sunrise: Array.from({ length: 6 }, (_, index) =>
+      `2026-08-${String(index + 6).padStart(2, '0')}T06:05`),
+    sunset: Array.from({ length: 6 }, (_, index) =>
+      `2026-08-${String(index + 6).padStart(2, '0')}T19:42`),
+    wind_speed_10m_max: [10, 11, 9, 8, 14, 9],
+  },
+})
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
@@ -14,7 +55,8 @@ test('loads the complete focus player without browser errors', async ({ page }) 
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
 
-  await expect(page.getByRole('heading', { name: 'Find your quiet.' })).toBeVisible()
+  await expect(page.getByText('Find your quiet.', { exact: true })).toBeVisible()
+  await expect(page.locator('.intro--quote h1')).not.toHaveText('')
   await expect(page.getByRole('link', { name: 'Chillax home' }).locator('svg')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start focus session' })).toBeEnabled()
   await expect(page.getByLabel('60:00 remaining')).toBeVisible()
@@ -82,13 +124,19 @@ test('ships an installable manifest and works offline after caching', async ({ p
     expect.objectContaining({ sizes: '512x512' }),
   ]))
 
+  for (const legalPage of ['privacy', 'terms']) {
+    const legalResponse = await request.get(`/${legalPage}.html`)
+    expect(legalResponse.ok()).toBeTruthy()
+    expect(await legalResponse.text()).toContain(`<title>${legalPage === 'privacy' ? 'Privacy' : 'Terms'} | Chillax</title>`)
+  }
+
   await page.evaluate(async () => {
     if (!('serviceWorker' in navigator)) throw new Error('Service workers are unavailable.')
     await navigator.serviceWorker.ready
   })
   await context.setOffline(true)
   await page.reload({ waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'Find your quiet.' })).toBeVisible()
+  await expect(page.getByText('Find your quiet.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Calm Focus/ }).click()
   await page.getByRole('button', { name: 'Start focus session' }).click()
   await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
@@ -232,7 +280,184 @@ test('persists dark mode and keeps the mobile transport in reach', async ({ page
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 })
 
-test('does not contact third-party services', async ({ page }) => {
+test('opens weather without interrupting the active timer or audio controls', async ({ page }) => {
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    await route.fulfill({
+      body: JSON.stringify(makeWeatherResponse()),
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      status: 200,
+    })
+  })
+
+  await expect(page.getByRole('button', { name: 'Open traffic' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Start focus session' }).click()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  await page.waitForTimeout(1_100)
+
+  await page.getByRole('button', { name: 'Open weather' }).click()
+  await expect(page).toHaveURL(/\/weather$/)
+  await expect(page.getByRole('heading', { level: 1, name: /Weather in Tierrasanta/ })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Close weather and return to focus' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByText('Next 24 hours')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  const weatherHero = page.locator('.weather-hero')
+  await expect(weatherHero).toHaveClass(/has-photo/)
+  await expect(weatherHero.locator('.weather-hero__photo')).toBeVisible()
+  expect(await weatherHero.evaluate((hero) => getComputedStyle(hero, '::before').display)).toBe('none')
+  expect(await weatherHero.evaluate((hero) => getComputedStyle(hero, '::after').display)).toBe('none')
+  await expect(page.getByRole('link', { name: 'Unsplash' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Use Fahrenheit' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('button', { name: 'Use 12-hour time' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+
+  for (const control of await page.locator('.weather-segmented-control').all()) {
+    const bounds = await control.boundingBox()
+    expect(bounds).not.toBeNull()
+    expect(bounds!.width).toBeLessThanOrEqual(100)
+  }
+
+  const favoritePhoto = page.getByRole('button', { name: 'Favorite this weather photo' })
+  await expect(favoritePhoto).toBeEnabled()
+  await favoritePhoto.click()
+  await expect(page.getByRole('button', {
+    name: 'Remove this weather photo from favorites',
+  })).toHaveAttribute('aria-pressed', 'true')
+
+  await page.getByRole('button', { name: 'Hide weather photography' }).click()
+  await expect(weatherHero).not.toHaveClass(/has-photo/)
+  await expect(weatherHero.locator('.weather-hero__photo')).toHaveCount(0)
+  expect(await weatherHero.evaluate((hero) => getComputedStyle(hero, '::before').display)).not.toBe('none')
+  await page.getByRole('button', { name: 'Show weather photography' }).click()
+  await expect(weatherHero).toHaveClass(/has-photo/)
+
+  const weatherTimer = page.getByLabel(/on the Chillax timer/)
+  const before = await weatherTimer.textContent()
+  await page.waitForTimeout(1_100)
+  await expect(weatherTimer).not.toHaveText(before ?? '')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const locationSearch = page.getByRole('searchbox', { name: 'Location' })
+  await expect(locationSearch).toBeVisible()
+  await locationSearch.focus()
+  const searchOutline = await locationSearch.evaluate((input) => {
+    const styles = getComputedStyle(input)
+    return { style: styles.outlineStyle, width: Number.parseFloat(styles.outlineWidth) }
+  })
+  expect(searchOutline.style).not.toBe('none')
+  expect(searchOutline.width).toBeGreaterThan(0)
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+
+  await page.getByRole('button', { name: 'Back to focus' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause focus session' }).click()
+})
+
+test('plans a mocked drive without interrupting the session and keeps only preferences', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-08-06T16:00:00-07:00'))
+  await page.reload()
+
+  let routeRequest: Record<string, unknown> | null = null
+  await page.route('https://routes.googleapis.com/**', async (route) => {
+    routeRequest = route.request().postDataJSON() as Record<string, unknown>
+    await route.fulfill({
+      body: JSON.stringify({
+        routes: [{
+          distanceMeters: 18_000,
+          duration: '1800s',
+          staticDuration: '1500s',
+          polyline: { encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' },
+          legs: [{
+            startLocation: { latLng: { latitude: 32.75, longitude: -117.15 } },
+            endLocation: { latLng: { latitude: 32.82, longitude: -117.1 } },
+          }],
+          viewport: {
+            low: { latitude: 32.75, longitude: -117.15 },
+            high: { latitude: 32.82, longitude: -117.1 },
+          },
+        }],
+      }),
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      status: 200,
+    })
+  })
+  await page.route('https://maps.googleapis.com/maps/api/staticmap**', async (route) => {
+    await route.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="#e8dfec"/><path d="M60 320 C180 240 250 260 340 170 S500 80 580 95" fill="none" stroke="#9f4fbc" stroke-width="12"/><circle cx="60" cy="320" r="15" fill="#4d806d"/><circle cx="580" cy="95" r="15" fill="#9f4fbc"/></svg>',
+      contentType: 'image/svg+xml',
+      status: 200,
+    })
+  })
+  await page.route('https://api.open-meteo.com/**', async (route) => {
+    await route.fulfill({
+      body: JSON.stringify(makeWeatherResponse()),
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      status: 200,
+    })
+  })
+
+  await page.getByRole('button', { name: 'Start focus session' }).click()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  await page.getByRole('button', { name: 'Open traffic' }).click()
+  await expect(page).toHaveURL(/\/traffic$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Get home on time.' })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+
+  await page.getByRole('textbox', { name: 'Home', exact: true }).fill('100 Example Avenue')
+  await page.getByLabel('Be home by').fill('18:00')
+  await page.getByRole('button', { name: '10 minute arrival cushion' }).click()
+  await page.getByRole('button', { name: 'Enter a location' }).click()
+  await page.getByRole('textbox', { name: 'Where are you leaving from?' }).fill('200 Sample Street')
+
+  const calculateButton = page.getByRole('button', { name: 'Calculate leave time' })
+  await expect(calculateButton).toBeEnabled()
+  await calculateButton.click()
+  await expect(page.getByLabel('Your leave time').getByText('5:20 PM', { exact: true })).toBeVisible()
+  await expect(page.getByText('30 min', { exact: true })).toBeVisible()
+  await expect(page.getByText('+5 min', { exact: true })).toBeVisible()
+  await expect(page.getByAltText('Google Maps route from your starting point to home')).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  expect(routeRequest).toMatchObject({
+    destination: { address: '100 Example Avenue' },
+    origin: { address: '200 Sample Street' },
+    routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+    trafficModel: 'BEST_GUESS',
+    travelMode: 'DRIVE',
+  })
+
+  await page.getByRole('button', { name: 'Open weather' }).click()
+  await expect(page.getByRole('status', { name: /Traffic reminder: leave by 5:20 PM/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Pause focus session' })).toBeVisible()
+  await page.getByRole('button', { name: 'Back to focus' }).click()
+  await expect(page.getByRole('status', { name: /Traffic reminder: leave by 5:20 PM/ })).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByRole('status', { name: /Traffic reminder/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Open traffic' }).click()
+  await expect(page.getByRole('textbox', { name: 'Home', exact: true })).toHaveValue('100 Example Avenue')
+  await expect(page.getByLabel('Be home by')).toHaveValue('18:00')
+  await expect(page.getByRole('button', { name: '10 minute arrival cushion' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await expect(page.getByRole('textbox', { name: 'Where are you leaving from?' })).toHaveCount(0)
+})
+
+test('the focus player does not contact third-party services before Weather or Traffic is opened', async ({ page }) => {
   const foreignOrigins = new Set<string>()
   const appOrigin = new URL(page.url()).origin
   page.on('request', (request) => {

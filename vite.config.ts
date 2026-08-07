@@ -52,6 +52,20 @@ export default defineConfig({
         clientsClaim: true,
         globPatterns: ['**/*.{html,js,css,svg,png,ico,webmanifest}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/(?:privacy|terms)(?:\.html)?$/],
+        runtimeCaching: [
+          {
+            urlPattern: /\/weather-photos\/.*\.webp$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'chillax-weather-photos',
+              expiration: {
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+                maxEntries: 8,
+              },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
