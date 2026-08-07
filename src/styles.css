@@ -381,9 +381,9 @@ html[data-theme="dark"] .visual-panel {
 
 .ambient-visual__stars {
   z-index: 0;
-  inset: -24%;
-  width: 148%;
-  height: 148%;
+  inset: -36%;
+  width: 172%;
+  height: 172%;
   background-image:
     radial-gradient(circle at 7% 14%, rgb(255 252 246 / 82%) 0 1px, transparent 1.7px),
     radial-gradient(circle at 18% 64%, rgb(255 252 246 / 42%) 0 1px, transparent 1.6px),
@@ -403,14 +403,63 @@ html[data-theme="dark"] .visual-panel {
     radial-gradient(circle at 71% 57%, rgb(255 252 246 / 60%) 0 1px, transparent 1.7px),
     radial-gradient(circle at 82% 30%, rgb(255 252 246 / 38%) 0 1px, transparent 1.5px),
     radial-gradient(circle at 96% 11%, rgb(255 252 246 / 72%) 0 1px, transparent 1.7px);
-  opacity: 0.46;
+  opacity: 0.52;
   pointer-events: none;
-  transform: translate3d(0, 0, 0);
-  animation: star-drift 50s linear infinite alternate;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  will-change: transform;
+  animation: star-drift var(--starfield-duration, 50s) linear infinite alternate;
 }
 
 @keyframes star-drift {
-  to { transform: translate3d(-3%, 2%, 0); }
+  to { transform: translate3d(-8%, 5%, 0) scale(1.08); }
+}
+
+.ambient-visual__stars::before,
+.ambient-visual__stars::after {
+  position: absolute;
+  content: '';
+  display: block;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.ambient-visual__stars::before {
+  inset: 3%;
+  opacity: 0.72;
+  background-image:
+    radial-gradient(circle at 6% 18%, rgb(255 254 250 / 94%) 0 1.2px, transparent 1.9px),
+    radial-gradient(circle at 15% 72%, rgb(235 230 255 / 82%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 29% 36%, rgb(255 252 243 / 88%) 0 1.1px, transparent 1.8px),
+    radial-gradient(circle at 43% 91%, rgb(237 245 255 / 78%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 54% 12%, rgb(255 249 228 / 86%) 0 1.2px, transparent 1.9px),
+    radial-gradient(circle at 68% 56%, rgb(244 238 255 / 84%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 79% 25%, rgb(255 254 250 / 90%) 0 1.1px, transparent 1.8px),
+    radial-gradient(circle at 91% 79%, rgb(228 243 255 / 80%) 0 1px, transparent 1.7px);
+  animation: star-drift-near var(--starfield-near-duration, 31s) linear infinite alternate;
+}
+
+.ambient-visual__stars::after {
+  inset: -9%;
+  opacity: 0.38;
+  background-image:
+    radial-gradient(circle at 10% 49%, rgb(255 254 250 / 90%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 23% 8%, rgb(237 245 255 / 76%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 37% 68%, rgb(255 249 228 / 80%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 51% 31%, rgb(244 238 255 / 82%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 66% 94%, rgb(255 254 250 / 86%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 82% 44%, rgb(228 243 255 / 74%) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 96% 17%, rgb(255 249 228 / 76%) 0 1px, transparent 1.7px);
+  animation: star-drift-far var(--starfield-far-duration, 70s) linear infinite alternate;
+}
+
+@keyframes star-drift-near {
+  to { transform: translate3d(12%, -8%, 0) scale(1.12); }
+}
+
+@keyframes star-drift-far {
+  to { transform: translate3d(-5%, 9%, 0) scale(1.04); }
 }
 
 .ambient-visual__aura {
@@ -2633,6 +2682,11 @@ html[data-theme="dark"] .traffic-hero {
   box-shadow: 0 3px 10px rgb(0 0 0 / 8%);
 }
 
+.settings-speed-choice button {
+  min-width: 51px;
+  padding: 0 9px;
+}
+
 .toggle {
   position: relative;
   display: block;
@@ -3388,7 +3442,8 @@ html[data-theme="dark"] .traffic-hero {
     grid-template-columns: minmax(0, 1fr) minmax(116px, 0.62fr);
   }
 
-  .settings-row--theme {
+  .settings-row--theme,
+  .settings-row--starfield {
     align-items: start;
     grid-template-columns: minmax(0, 1fr);
   }

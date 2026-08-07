@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks'
-import type { ThemeMode } from '../types'
+import type { StarfieldSpeedSeconds, ThemeMode } from '../types'
 import { assetPath } from '../lib/assets'
 import { CloseIcon } from './Icons'
 
@@ -9,12 +9,21 @@ interface SettingsDialogProps {
   wakeLockSupported: boolean
   isStandalone: boolean
   offlineReady: boolean
+  starfieldSpeedSeconds: StarfieldSpeedSeconds
   theme: ThemeMode
   onClose: () => void
   onResetPreferences: () => void
+  onStarfieldSpeedChange: (seconds: StarfieldSpeedSeconds) => void
   onThemeChange: (theme: ThemeMode) => void
   onWakeLockChange: (enabled: boolean) => void
 }
+
+const STARFIELD_SPEED_OPTIONS: ReadonlyArray<{ label: string; seconds: StarfieldSpeedSeconds }> = [
+  { label: 'Quick', seconds: 30 },
+  { label: 'Standard', seconds: 50 },
+  { label: 'Slow', seconds: 75 },
+  { label: 'Drift', seconds: 105 },
+]
 
 const SOUND_CREDITS = [
   { name: 'Rain loops', creator: 'Ylmir', license: 'CC0', url: 'https://opengameart.org/content/rain-loopable' },
@@ -34,9 +43,11 @@ export function SettingsDialog({
   wakeLockSupported,
   isStandalone,
   offlineReady,
+  starfieldSpeedSeconds,
   theme,
   onClose,
   onResetPreferences,
+  onStarfieldSpeedChange,
   onThemeChange,
   onWakeLockChange,
 }: SettingsDialogProps) {
@@ -131,6 +142,24 @@ export function SettingsDialog({
             >
               Dark
             </button>
+          </div>
+        </div>
+
+        <div class="settings-row settings-row--starfield">
+          <div>
+            <strong>Starfield motion</strong>
+            <p>Layered stars drift behind the orb. Standard is a 50-second journey.</p>
+          </div>
+          <div aria-label="Starfield motion speed" class="theme-choice settings-speed-choice">
+            {STARFIELD_SPEED_OPTIONS.map((option) => (
+              <button
+                aria-pressed={starfieldSpeedSeconds === option.seconds}
+                onClick={() => onStarfieldSpeedChange(option.seconds)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
 

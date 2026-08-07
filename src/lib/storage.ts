@@ -7,6 +7,7 @@ import type {
   RestoredPomodoroSession,
   RestoredSession,
   SessionPlanV1,
+  StarfieldSpeedSeconds,
   ThemeMode,
   TimerState,
 } from '../types'
@@ -38,6 +39,7 @@ export const DEFAULT_PREFERENCES: PreferencesV2 = {
   previousVolume: 0.55,
   wakeLockEnabled: false,
   theme: 'light',
+  starfieldSpeedSeconds: 50,
 }
 
 export interface PersistedStateV3 {
@@ -81,6 +83,7 @@ const PRESETS: ReadonlySet<PresetId> = new Set(PRESET_DEFINITIONS.map((preset) =
 const LEGACY_PRESETS = new Set(['deep-work', 'flow', 'calm-focus'])
 const INTENSITIES: ReadonlySet<Intensity> = new Set(['soft', 'standard', 'strong'])
 const THEMES: ReadonlySet<ThemeMode> = new Set(['light', 'dark'])
+const STARFIELD_SPEEDS: ReadonlySet<StarfieldSpeedSeconds> = new Set([30, 50, 75, 105])
 const TIMER_STATUSES = new Set(['idle', 'running', 'paused', 'completed'])
 const POMODORO_PHASES = new Set(['focus', 'short-break', 'long-break'])
 
@@ -114,8 +117,19 @@ export function isPreferencesV2(value: unknown): value is PreferencesV2 {
   return value.version === 2
     && PRESETS.has(value.preset as PresetId)
     && THEMES.has(value.theme as ThemeMode)
+    // Existing browser-only preferences predate this setting. Accept them once,
+    // then hydrate the default below instead of discarding a person's setup.
+    && (value.starfieldSpeedSeconds === undefined
+      || STARFIELD_SPEEDS.has(value.starfieldSpeedSeconds as StarfieldSpeedSeconds))
     && hasValidPreferenceFields(value)
 }
+
+const normalizePreferences = (preferences: PreferencesV2): PreferencesV2 => ({
+  ...preferences,
+  starfieldSpeedSeconds: STARFIELD_SPEEDS.has(preferences.starfieldSpeedSeconds)
+    ? preferences.starfieldSpeedSeconds
+    : DEFAULT_PREFERENCES.starfieldSpeedSeconds,
+})
 
 const isLegacyPreferencesV1 = (value: unknown): value is LegacyPreferencesV1 => {
   if (!isObject(value)) return false
@@ -252,6 +266,7 @@ const migrateLegacyState = (legacy: LegacyPersistedStateV1): PersistedStateV2 =>
     ...legacy.preferences,
     version: 2,
     theme: 'light',
+    starfieldSpeedSeconds: DEFAULT_PREFERENCES.starfieldSpeedSeconds,
   },
   timer: { ...legacy.timer },
 })
@@ -277,7 +292,7 @@ const inferSessionPlan = (preferences: PreferencesV2): SessionPlanV1 => {
 
 const migratePersistedStateV2 = (persisted: PersistedStateV2): PersistedStateV3 => ({
   version: 3,
-  preferences: { ...persisted.preferences },
+  preferences: normalizePreferences(persisted.preferences),
   timer: { ...persisted.timer },
   sessionPlan: inferSessionPlan(persisted.preferences),
   pomodoro: createPomodoroState(),
@@ -287,7 +302,9 @@ const readRawState = (storage: Storage | null): PersistedStateV3 | null => {
   if (!storage) return null
 
   const current = readJson(storage, STORAGE_KEY)
-  if (isPersistedStateV3(current)) return current
+  if (isPersistedStateV3(current)) {
+    return { ...current, preferences: normalizePreferences(current.preferences) }
+  }
   if (isPersistedStateV2(current)) return migratePersistedStateV2(current)
 
   const legacy = readJson(storage, LEGACY_STORAGE_KEY)

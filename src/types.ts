@@ -20,6 +20,8 @@ export type Intensity = 'soft' | 'standard' | 'strong'
 
 export type ThemeMode = 'light' | 'dark'
 
+export type StarfieldSpeedSeconds = 30 | 50 | 75 | 105
+
 export type TimerMode = 'countdown' | 'endless'
 
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'completed'
@@ -33,6 +35,7 @@ export interface PreferencesV2 {
   previousVolume: number
   wakeLockEnabled: boolean
   theme: ThemeMode
+  starfieldSpeedSeconds: StarfieldSpeedSeconds
 }
 
 export interface TimerState {

@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'preact/hooks'
-import type { Intensity, PresetId, ThemeMode } from '../types'
+import type { Intensity, PresetId, StarfieldSpeedSeconds, ThemeMode } from '../types'
 
 interface AmbientVisualProps {
   intensity: Intensity
   isPlaying: boolean
   preset: PresetId
+  starfieldSpeedSeconds: StarfieldSpeedSeconds
   theme: ThemeMode
 }
 
@@ -196,7 +197,13 @@ const easeColor = (current: number[], target: Rgb) => {
   }
 }
 
-export function AmbientVisual({ intensity, isPlaying, preset, theme }: AmbientVisualProps) {
+export function AmbientVisual({
+  intensity,
+  isPlaying,
+  preset,
+  starfieldSpeedSeconds,
+  theme,
+}: AmbientVisualProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const configRef = useRef({ intensity, isPlaying, preset, theme })
   const requestDrawRef = useRef<() => void>(() => undefined)
@@ -358,6 +365,7 @@ export function AmbientVisual({ intensity, isPlaying, preset, theme }: AmbientVi
     <div
       aria-hidden="true"
       class={`ambient-visual ambient-visual--${preset}${isPlaying ? ' is-playing' : ''}`}
+      style={`--starfield-duration: ${starfieldSpeedSeconds}s; --starfield-near-duration: ${Math.max(15, Math.round(starfieldSpeedSeconds * 0.62))}s; --starfield-far-duration: ${Math.round(starfieldSpeedSeconds * 1.4)}s;`}
     >
       <span class="ambient-visual__stars" />
       <span class="ambient-visual__aura" />

@@ -163,6 +163,7 @@ describe('versioned local storage', () => {
     }))
 
     const loaded = loadStoredState(storage, START_TIME)
+    expect(loaded.preferences.starfieldSpeedSeconds).toBe(50)
     expect(loaded.session.state).toEqual(timer)
     expect(loaded.sessionPlan).toEqual(createSessionPlan({
       choice: 'custom',

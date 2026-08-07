@@ -319,6 +319,9 @@ describe('Chillax app', () => {
     fireEvent.click(settingsButton)
     expect(screen.getByRole('dialog', { name: 'Make it yours.' })).toBeInTheDocument()
     expect(screen.getByText(/no account, analytics, cookies/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Standard' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Quick' }))
+    expect(screen.getByRole('button', { name: 'Quick' })).toHaveAttribute('aria-pressed', 'true')
 
     const closeButton = within(screen.getByRole('dialog')).getByRole('button', { name: 'Close settings' })
     const resetButton = screen.getByRole('button', { name: 'Restore default settings' })
@@ -340,6 +343,7 @@ describe('Chillax app', () => {
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(saved.preferences.preset).toBe('deep-work')
+      expect(saved.preferences.starfieldSpeedSeconds).toBe(50)
       expect(saved.sessionPlan.choice).toBe('sixty')
     })
   })

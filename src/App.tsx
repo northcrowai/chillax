@@ -50,6 +50,7 @@ import type {
   PresetId,
   SessionChoice,
   SessionPlanV1,
+  StarfieldSpeedSeconds,
   ThemeMode,
   TimerStatus,
 } from './types'
@@ -446,6 +447,10 @@ export function App() {
     updatePreference('theme', theme)
   }, [updatePreference])
 
+  const handleStarfieldSpeedChange = useCallback((seconds: StarfieldSpeedSeconds) => {
+    updatePreference('starfieldSpeedSeconds', seconds)
+  }, [updatePreference])
+
   const handleToggleTheme = useCallback(() => {
     handleThemeChange(preferences.theme === 'light' ? 'dark' : 'light')
   }, [handleThemeChange, preferences.theme])
@@ -581,6 +586,7 @@ export function App() {
                   intensity={preferences.intensity}
                   isPlaying={sessionIsRunning}
                   preset={preferences.preset}
+                  starfieldSpeedSeconds={preferences.starfieldSpeedSeconds}
                   theme={preferences.theme}
                 />
               </div>
@@ -721,9 +727,11 @@ export function App() {
         offlineReady={offlineReady || pwaInstall.isStandalone}
         onClose={closeSettings}
         onResetPreferences={handleResetPreferences}
+        onStarfieldSpeedChange={handleStarfieldSpeedChange}
         onThemeChange={handleThemeChange}
         onWakeLockChange={handleWakeLockChange}
         open={settingsOpen}
+        starfieldSpeedSeconds={preferences.starfieldSpeedSeconds}
         theme={preferences.theme}
         wakeLockEnabled={preferences.wakeLockEnabled}
         wakeLockSupported={wakeLock.isSupported}
