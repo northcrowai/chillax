@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/preact'
+import { act, renderHook, waitFor } from '@testing-library/preact'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRAFFIC_PREFERENCES_STORAGE_KEY, type TrafficFetch } from '../lib/traffic'
 import { useTrafficPlan } from './useTrafficPlan'
@@ -25,6 +25,59 @@ const createFetchMock = () => vi.fn<TrafficFetch>(async () => jsonResponse(route
 
 describe('useTrafficPlan', () => {
   beforeEach(() => window.localStorage.clear())
+
+  it('automatically creates a fresh leave plan when a saved commute opens', async () => {
+    window.localStorage.setItem(TRAFFIC_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      version: 2,
+      homeAddress: '123 Example Home Street',
+      homeArrivalTime: '18:00',
+      workAddress: '456 Example Work Way',
+      workArrivalTime: '09:00',
+      cushionMinutes: 5,
+    }))
+    const fetchImpl = createFetchMock()
+    const { result } = renderHook(() => useTrafficPlan({
+      storage: window.localStorage,
+      fetchImpl,
+      now: () => new Date(2026, 7, 6, 19, 0),
+      routesApiKey: 'test-routes-key',
+      staticMapsApiKey: 'test-static-maps-key',
+    }))
+
+    await waitFor(() => expect(result.current.plan).not.toBeNull())
+
+    expect(fetchImpl).toHaveBeenCalled()
+    expect(result.current.plan?.desiredArrivalTime).toContain('2026-08-07T16:00:00.000Z')
+  })
+
+  it('refreshes the active commute after an hour during the pre-departure window', async () => {
+    window.localStorage.setItem(TRAFFIC_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      version: 2,
+      homeAddress: '123 Example Home Street',
+      homeArrivalTime: '18:00',
+      workAddress: '456 Example Work Way',
+      workArrivalTime: '09:00',
+      cushionMinutes: 5,
+    }))
+    const fetchImpl = createFetchMock()
+    let currentTime = new Date(2026, 7, 7, 7, 0)
+    const { result } = renderHook(() => useTrafficPlan({
+      storage: window.localStorage,
+      fetchImpl,
+      now: () => currentTime,
+      routesApiKey: 'test-routes-key',
+      staticMapsApiKey: 'test-static-maps-key',
+    }))
+
+    await waitFor(() => expect(result.current.plan).not.toBeNull())
+    const initialRequestCount = fetchImpl.mock.calls.length
+    currentTime = new Date(2026, 7, 7, 8, 1)
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+
+    await waitFor(() => expect(fetchImpl.mock.calls.length).toBeGreaterThan(initialRequestCount))
+  })
 
   it('plans tomorrow morning from Home to Work and persists only the schedule', async () => {
     const fetchImpl = createFetchMock()

@@ -15,7 +15,9 @@ import {
   type TrafficPreferences,
 } from '../lib/traffic'
 
-const AUTO_REFRESH_MS = 10 * 60 * 1000
+// A traffic-aware route can make several Google Routes calls while it refines
+// the leave time. Refresh only once an hour, and only near a real commute.
+const AUTO_REFRESH_MS = 60 * 60 * 1000
 const AUTO_REFRESH_WINDOW_MS = 3 * 60 * 60 * 1000
 const SCHEDULER_TICK_MS = 60 * 1000
 const ROUTE_REQUEST_TIMEOUT_MS = 20 * 1000
@@ -94,6 +96,7 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
   const lastOriginRef = useRef<TrafficOrigin | null>(null)
   const lastRefreshAttemptRef = useRef(0)
   const hiddenSinceRef = useRef<number | null>(null)
+  const didAutoCalculateOnOpenRef = useRef(false)
 
   const isConfigured = routesApiKey.trim().length > 0
     && staticMapsApiKey.trim().length > 0
@@ -249,6 +252,15 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
 
   const calculate = useCallback(() => calculateInternal(), [calculateInternal])
 
+  // A route result is intentionally not persisted, so a saved commute needs a
+  // fresh estimate after the app opens. This runs at most once per app session;
+  // subsequent automatic calls are limited by the hourly, commute-aware gate.
+  useEffect(() => {
+    if (didAutoCalculateOnOpenRef.current) return
+    didAutoCalculateOnOpenRef.current = true
+    void calculateInternal({ automatic: true })
+  }, [calculateInternal])
+
   const reset = useCallback(() => {
     cancelPendingRequest()
     clearTrafficPreferences(storage)
@@ -279,24 +291,39 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
 
-    const currentMs = now().getTime()
+    const current = now()
+    const currentMs = current.getTime()
     const leaveByMs = Date.parse(plan.leaveBy)
     const targetMs = Date.parse(plan.desiredArrivalTime)
+    let nextTargetMs: number
+    try {
+      nextTargetMs = getPlannedTrafficDrive(preferences, current).desiredArrival.getTime()
+    } catch {
+      return false
+    }
     if (!Number.isFinite(currentMs)
       || !Number.isFinite(leaveByMs)
       || !Number.isFinite(targetMs)
-      || currentMs >= targetMs
-      || currentMs < leaveByMs - AUTO_REFRESH_WINDOW_MS) {
-      return false
-    }
+      || !Number.isFinite(nextTargetMs)) return false
 
     const fetchedAtMs = Date.parse(plan.fetchedAt)
     const lastActivityMs = Math.max(
       Number.isFinite(fetchedAtMs) ? fetchedAtMs : 0,
       lastRefreshAttemptRef.current,
     )
+
+    // Once a commute ends, switch once to the next scheduled trip. An hourly
+    // cooldown still applies, so a temporary Google error cannot cause retries
+    // every scheduler tick.
+    if (nextTargetMs !== targetMs) return currentMs - lastActivityMs >= autoRefreshMs
+
+    if (currentMs >= targetMs
+      || currentMs < leaveByMs - AUTO_REFRESH_WINDOW_MS) {
+      return false
+    }
+
     return currentMs - lastActivityMs >= autoRefreshMs
-  }, [autoRefreshMs, now, plan])
+  }, [autoRefreshMs, now, plan, preferences])
 
   useEffect(() => {
     if (!plan || !lastOriginRef.current) return

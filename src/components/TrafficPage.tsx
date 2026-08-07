@@ -205,7 +205,7 @@ export function TrafficPage({
             <div class="traffic-leave-time" aria-live="polite"><span>{planLeaveNow ? 'Leave' : 'Leave by'}</span><strong>{planLeaveNow ? 'Now' : formatTime(plan.leaveBy)}</strong></div>
             <dl class="traffic-route-details"><div><dt>Drive time</dt><dd>{formatDuration(plan.durationSeconds)}</dd></div><div><dt>Traffic delay</dt><dd>{formatTrafficDelay(plan.durationSeconds, plan.staticDurationSeconds)}</dd></div><div><dt>Expected arrival</dt><dd>{formatTime(plan.predictedArrivalTime)}</dd></div></dl>
             {mapUrl ? <figure class="traffic-map"><img alt={`Google Maps route: ${drive.routeLabel}`} decoding="async" referrerPolicy="origin" src={mapUrl} /><figcaption>Route map by <a href="https://www.google.com/maps" rel="noreferrer" target="_blank">Google Maps</a></figcaption></figure> : null}
-            <p class="traffic-updated">Traffic checked {formatTime(plan.fetchedAt)}. Chillax refreshes close to your departure.</p>
+            <p class="traffic-updated">Traffic checked {formatTime(plan.fetchedAt)}. Chillax refreshes hourly in the three hours before you leave.</p>
           </> : <div class="traffic-empty" aria-live="polite" role="status"><TrafficIcon /><strong>{isBusy ? calculateLabel : 'Your next commute will appear here.'}</strong><p>{isBusy ? 'Chillax is finding the best time to leave.' : `${drive.dayLabel}: ${drive.routeLabel}. Add both addresses, then calculate using current traffic.`}</p></div>}
         </section>
       </div>
