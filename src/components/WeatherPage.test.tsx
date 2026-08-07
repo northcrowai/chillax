@@ -273,7 +273,7 @@ describe('WeatherPage', () => {
       timeFormat: '24',
     })))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh forecast' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh forecast and weather photo' }))
     await waitFor(() => expect(fetchForecastMock.mock.calls.length).toBeGreaterThan(
       requestsAfterUnitChange,
     ))

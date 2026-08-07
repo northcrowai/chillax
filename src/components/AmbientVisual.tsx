@@ -365,7 +365,7 @@ export function AmbientVisual({
     <div
       aria-hidden="true"
       class={`ambient-visual ambient-visual--${preset}${isPlaying ? ' is-playing' : ''}`}
-      style={`--starfield-duration: ${starfieldSpeedSeconds}s; --starfield-near-duration: ${Math.max(15, Math.round(starfieldSpeedSeconds * 0.62))}s; --starfield-far-duration: ${Math.round(starfieldSpeedSeconds * 1.4)}s;`}
+      style={`--starfield-duration: ${starfieldSpeedSeconds}s; --starfield-near-duration: ${Math.max(3, Math.round(starfieldSpeedSeconds * 0.62))}s; --starfield-far-duration: ${Math.max(6, Math.round(starfieldSpeedSeconds * 1.4))}s;`}
     >
       <span class="ambient-visual__stars" />
       <span class="ambient-visual__aura" />

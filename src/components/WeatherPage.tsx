@@ -210,6 +210,7 @@ export function WeatherPage({
   const [forecastStatus, setForecastStatus] = useState<ForecastStatus>('loading')
   const [locationRequest, setLocationRequest] = useState<LocationRequest>(null)
   const [refreshVersion, setRefreshVersion] = useState(0)
+  const [photoRefreshVersion, setPhotoRefreshVersion] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [photoPreferences, setPhotoPreferences] = useState(initialPhotoPreferences)
@@ -234,6 +235,7 @@ export function WeatherPage({
         clock.dateKey,
         photoPreferences.favorites[photoKey],
         failedPhotoIds,
+        photoRefreshVersion,
       )
     : null
   const hasHeroPhoto = Boolean(forecast)
@@ -407,6 +409,8 @@ export function WeatherPage({
 
   const handleRefresh = useCallback(() => {
     setFailedPhotoIds([])
+    setLoadedPhotoId(null)
+    setPhotoRefreshVersion((current) => current + 1)
     setRefreshVersion((current) => current + 1)
   }, [])
 
@@ -557,7 +561,7 @@ export function WeatherPage({
               <HeartIcon filled={isPhotoFavorite} />
             </button>
             <button
-              aria-label="Refresh forecast"
+              aria-label="Refresh forecast and weather photo"
               class="weather-refresh-button"
               disabled={forecastStatus === 'loading' || forecastStatus === 'refreshing'}
               onClick={handleRefresh}

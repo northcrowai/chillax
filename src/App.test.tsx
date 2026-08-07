@@ -344,7 +344,7 @@ describe('Chillax app', () => {
     await waitFor(() => {
       const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')
       expect(saved.preferences.preset).toBe('deep-work')
-      expect(saved.preferences.starfieldSpeedSeconds).toBe(50)
+      expect(saved.preferences.starfieldSpeedSeconds).toBe(25)
       expect(saved.sessionPlan.choice).toBe('sixty')
     })
   })

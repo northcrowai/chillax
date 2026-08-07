@@ -408,7 +408,7 @@ html[data-theme="dark"] .visual-panel {
   transform: translate3d(0, 0, 0) scale(1);
   transform-origin: center;
   will-change: transform;
-  animation: star-drift var(--starfield-duration, 50s) linear infinite alternate;
+  animation: star-drift var(--starfield-duration, 25s) linear infinite alternate;
 }
 
 @keyframes star-drift {
@@ -437,7 +437,7 @@ html[data-theme="dark"] .visual-panel {
     radial-gradient(circle at 68% 56%, rgb(244 238 255 / 84%) 0 1px, transparent 1.7px),
     radial-gradient(circle at 79% 25%, rgb(255 254 250 / 90%) 0 1.1px, transparent 1.8px),
     radial-gradient(circle at 91% 79%, rgb(228 243 255 / 80%) 0 1px, transparent 1.7px);
-  animation: star-drift-near var(--starfield-near-duration, 31s) linear infinite alternate;
+  animation: star-drift-near var(--starfield-near-duration, 16s) linear infinite alternate;
 }
 
 .ambient-visual__stars::after {
@@ -451,7 +451,7 @@ html[data-theme="dark"] .visual-panel {
     radial-gradient(circle at 66% 94%, rgb(255 254 250 / 86%) 0 1px, transparent 1.7px),
     radial-gradient(circle at 82% 44%, rgb(228 243 255 / 74%) 0 1px, transparent 1.7px),
     radial-gradient(circle at 96% 17%, rgb(255 249 228 / 76%) 0 1px, transparent 1.7px);
-  animation: star-drift-far var(--starfield-far-duration, 70s) linear infinite alternate;
+  animation: star-drift-far var(--starfield-far-duration, 35s) linear infinite alternate;
 }
 
 @keyframes star-drift-near {
@@ -1999,23 +1999,29 @@ html[data-theme="dark"] .traffic-hero {
 }
 
 .traffic-hero::before {
-  top: -17rem;
-  right: 6%;
-  width: 33rem;
-  height: 33rem;
-  border: 34px solid color-mix(in srgb, var(--accent) 13%, transparent);
-  border-radius: 43% 57% 53% 47%;
-  transform: rotate(-18deg);
+  inset: -65% -8% -55% 31%;
+  background:
+    repeating-radial-gradient(
+      ellipse at 54% 47%,
+      transparent 0 25px,
+      color-mix(in srgb, var(--accent) 18%, transparent) 26px 28px,
+      transparent 29px 48px
+    );
+  opacity: 0.82;
+  transform: rotate(-13deg) scaleX(1.25);
 }
 
 .traffic-hero::after {
-  right: 20%;
-  bottom: -7rem;
-  width: 29rem;
-  height: 15rem;
-  border-top: 2px dashed color-mix(in srgb, var(--accent-strong) 30%, transparent);
-  border-radius: 50%;
-  transform: rotate(9deg);
+  inset: 24% 35% -72% -18%;
+  background:
+    repeating-radial-gradient(
+      ellipse at 48% 50%,
+      transparent 0 19px,
+      color-mix(in srgb, var(--accent-strong) 21%, transparent) 20px 21px,
+      transparent 22px 39px
+    );
+  opacity: 0.64;
+  transform: rotate(17deg) scaleX(1.5);
 }
 
 .traffic-hero__copy,
@@ -2551,6 +2557,12 @@ html[data-theme="dark"] .traffic-hero {
 .app-footer__install svg {
   width: 13px;
   height: 13px;
+}
+
+.app-footer__install-help {
+  margin: 0 auto 0 14px;
+  color: var(--ink-faint);
+  font-size: 10px;
 }
 
 .keyboard-hint kbd {

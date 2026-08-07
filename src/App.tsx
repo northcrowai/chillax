@@ -126,6 +126,7 @@ export function App() {
   const [customSessionOpen, setCustomSessionOpen] = useState(false)
   const [offlineReady, setOfflineReady] = useState(false)
   const [updateAvailable, setUpdateAvailable] = useState(false)
+  const [showInstallHelp, setShowInstallHelp] = useState(false)
   const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
   const customSessionButtonRef = useRef<HTMLButtonElement>(null)
@@ -226,6 +227,11 @@ export function App() {
   const pwaInstall = usePwaInstall()
   const traffic = useTrafficPlan({ theme: preferences.theme })
   const resetTraffic = traffic.reset
+
+  const handleInstall = useCallback(async () => {
+    const installed = await pwaInstall.install()
+    if (!installed) setShowInstallHelp(true)
+  }, [pwaInstall])
 
   const preset = getPreset(preferences.preset)
   const timerDisplay = formatTimer(timerSnapshot.displayMs, timerSnapshot.mode === 'endless')
@@ -482,8 +488,8 @@ export function App() {
       artist: 'Chillax Focus',
       album: preset.sound,
       artwork: [
-        { src: assetPath('/north-crow-mobile-192.png'), sizes: '192x192', type: 'image/png' },
-        { src: assetPath('/north-crow-mobile-512.png'), sizes: '512x512', type: 'image/png' },
+        { src: assetPath('/north-crow-app-icon-192-white.png'), sizes: '192x192', type: 'image/png' },
+        { src: assetPath('/north-crow-app-icon-512-white.png'), sizes: '512x512', type: 'image/png' },
       ],
     })
     navigator.mediaSession.playbackState = sessionIsRunning ? 'playing' : 'paused'
@@ -710,14 +716,13 @@ export function App() {
 
         <footer class="app-footer">
           <div class="app-footer__facts">
-            {pwaInstall.canInstall ? (
-              <button class="app-footer__install" onClick={() => void pwaInstall.install()} type="button">
-                <InstallIcon />
-                Install app
-              </button>
-            ) : null}
+            <button class="app-footer__install" onClick={() => void handleInstall()} type="button">
+              <InstallIcon />
+              Install app
+            </button>
             {FOOTER_FACTS.map((fact) => <span key={fact}>{fact}</span>)}
           </div>
+          {showInstallHelp ? <p class="app-footer__install-help" role="status">If a prompt does not appear, use your browser menu and choose Install Chillax.</p> : null}
           <span class="keyboard-hint"><kbd>Space</kbd> play / <kbd>M</kbd> mute</span>
         </footer>
       </div>

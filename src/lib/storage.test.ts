@@ -163,7 +163,7 @@ describe('versioned local storage', () => {
     }))
 
     const loaded = loadStoredState(storage, START_TIME)
-    expect(loaded.preferences.starfieldSpeedSeconds).toBe(50)
+    expect(loaded.preferences.starfieldSpeedSeconds).toBe(25)
     expect(loaded.session.state).toEqual(timer)
     expect(loaded.sessionPlan).toEqual(createSessionPlan({
       choice: 'custom',
@@ -176,6 +176,24 @@ describe('versioned local storage', () => {
       version: 3,
       sessionPlan: { choice: 'custom', customMode: 'pomodoro' },
     })
+  })
+
+  it('keeps the meaning of saved starfield speed labels after the new timing scale', () => {
+    const storage = new CountingStorage()
+    storage.setItem(STORAGE_KEY, JSON.stringify({
+      version: 3,
+      preferences: {
+        ...DEFAULT_PREFERENCES,
+        starfieldSpeedSeconds: 50,
+        starfieldTimingVersion: undefined,
+      },
+      timer: createTimerState(),
+      sessionPlan: DEFAULT_SESSION_PLAN,
+      pomodoro: createPomodoroState(),
+    }))
+
+    const loaded = loadStoredState(storage, START_TIME)
+    expect(loaded.preferences.starfieldSpeedSeconds).toBe(25)
   })
 
   it('restores a saved running session as paused when time remains', () => {

@@ -75,6 +75,13 @@ describe('weather photography', () => {
     expect(first?.authorUrl).toMatch(/^https:\/\/unsplash\.com\/@/)
   })
 
+  it('rotates through matching photography after a manual refresh', () => {
+    const first = selectWeatherPhoto('clear', 'afternoon', '2026-08-06', undefined, [], 0)
+    const refreshed = selectWeatherPhoto('clear', 'afternoon', '2026-08-06', undefined, [], 1)
+
+    expect(refreshed?.id).not.toBe(first?.id)
+  })
+
   it('honors a favorite and can fall through failed local assets', () => {
     const favorite = selectWeatherPhoto('rain', 'night', '2026-08-06', 'storm')
     expect(favorite?.id).toBe('storm')

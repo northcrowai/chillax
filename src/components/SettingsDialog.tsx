@@ -19,10 +19,10 @@ interface SettingsDialogProps {
 }
 
 const STARFIELD_SPEED_OPTIONS: ReadonlyArray<{ label: string; seconds: StarfieldSpeedSeconds }> = [
-  { label: 'Quick', seconds: 30 },
-  { label: 'Standard', seconds: 50 },
-  { label: 'Slow', seconds: 75 },
-  { label: 'Drift', seconds: 105 },
+  { label: 'Quick', seconds: 5 },
+  { label: 'Standard', seconds: 25 },
+  { label: 'Slow', seconds: 50 },
+  { label: 'Drift', seconds: 100 },
 ]
 
 const SOUND_CREDITS = [
@@ -148,7 +148,7 @@ export function SettingsDialog({
         <div class="settings-row settings-row--starfield">
           <div>
             <strong>Starfield motion</strong>
-            <p>Layered stars drift behind the orb. Standard is a 50-second journey.</p>
+            <p>Layered stars drift behind the orb. Standard is a 25-second journey.</p>
           </div>
           <div aria-label="Starfield motion speed" class="theme-choice settings-speed-choice">
             {STARFIELD_SPEED_OPTIONS.map((option) => (

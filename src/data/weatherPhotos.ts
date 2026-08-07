@@ -226,6 +226,7 @@ export function selectWeatherPhoto(
   localDate: string,
   favoriteId?: WeatherPhotoId,
   excludedIds: readonly WeatherPhotoId[] = [],
+  rotation = 0,
 ): WeatherPhoto | null {
   const excluded = new Set(excludedIds)
   const candidates = WEATHER_PHOTO_CANDIDATES[condition][period]
@@ -236,8 +237,10 @@ export function selectWeatherPhoto(
     return WEATHER_PHOTOS[favoriteId]
   }
 
-  const startIndex = hashString(`${getWeatherPhotoKey(condition, period)}:${localDate}`)
-    % candidates.length
+  const startIndex = (
+    hashString(`${getWeatherPhotoKey(condition, period)}:${localDate}`)
+    + Math.max(0, Math.trunc(rotation))
+  ) % candidates.length
 
   for (let offset = 0; offset < candidates.length; offset += 1) {
     const id = candidates[(startIndex + offset) % candidates.length]

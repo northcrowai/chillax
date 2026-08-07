@@ -15,19 +15,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       includeAssets: [
-        'favicon-16x16.png',
-        'favicon-32x32.png',
-        'north-crow-mobile-apple-touch-icon.png',
-        'north-crow-mobile-192.png',
-        'north-crow-mobile-512.png',
-        'north-crow-mobile-maskable-512.png',
+        'north-crow-favicon-16-white.png',
+        'north-crow-favicon-32-white.png',
+        'north-crow-app-icon-apple-touch-white.png',
+        'north-crow-app-icon-192-white.png',
+        'north-crow-app-icon-512-white.png',
+        'north-crow-app-icon-maskable-512-white.png',
       ],
       manifest: {
         name: 'Chillax Focus',
         short_name: 'Chillax',
         description: 'Original focus tones and open ambient and lo-fi loops for calm, uninterrupted focus.',
-        theme_color: '#f7f3ed',
-        background_color: '#f7f3ed',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'any',
         start_url: appBasePath,
@@ -35,17 +35,17 @@ export default defineConfig({
         categories: ['productivity', 'lifestyle'],
         icons: [
           {
-            src: publicAsset('/north-crow-mobile-192.png'),
+            src: publicAsset('/north-crow-app-icon-192-white.png'),
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: publicAsset('/north-crow-mobile-512.png'),
+            src: publicAsset('/north-crow-app-icon-512-white.png'),
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: publicAsset('/north-crow-mobile-maskable-512.png'),
+            src: publicAsset('/north-crow-app-icon-maskable-512-white.png'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

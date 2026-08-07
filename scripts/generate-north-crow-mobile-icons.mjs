@@ -3,14 +3,16 @@ import sharp from 'sharp'
 
 const outputDir = path.resolve('public')
 const markPath = path.join(outputDir, 'north-crow-color-no-words.png')
-const background = '#210d2b'
+const background = '#ffffff'
 
 const outputs = [
-  { name: 'north-crow-mobile-192.png', size: 192, markScale: 0.68 },
-  { name: 'north-crow-mobile-512.png', size: 512, markScale: 0.68 },
+  { name: 'north-crow-app-icon-192-white.png', size: 192, markScale: 0.68 },
+  { name: 'north-crow-app-icon-512-white.png', size: 512, markScale: 0.68 },
   // Android launchers can crop heavily around a maskable icon's edges.
-  { name: 'north-crow-mobile-maskable-512.png', size: 512, markScale: 0.60 },
-  { name: 'north-crow-mobile-apple-touch-icon.png', size: 180, markScale: 0.68 },
+  { name: 'north-crow-app-icon-maskable-512-white.png', size: 512, markScale: 0.60 },
+  { name: 'north-crow-app-icon-apple-touch-white.png', size: 180, markScale: 0.68 },
+  { name: 'north-crow-favicon-16-white.png', size: 16, markScale: 0.78 },
+  { name: 'north-crow-favicon-32-white.png', size: 32, markScale: 0.78 },
 ]
 
 const createIcon = async ({ name, size, markScale }) => {

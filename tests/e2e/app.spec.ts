@@ -120,9 +120,9 @@ test('ships an installable manifest and works offline after caching', async ({ p
     display: 'standalone',
   })
   expect(manifest.icons).toEqual(expect.arrayContaining([
-    expect.objectContaining({ src: '/north-crow-mobile-192.png', sizes: '192x192' }),
-    expect.objectContaining({ src: '/north-crow-mobile-512.png', sizes: '512x512' }),
-    expect.objectContaining({ src: '/north-crow-mobile-maskable-512.png', purpose: 'maskable' }),
+    expect.objectContaining({ src: '/north-crow-app-icon-192-white.png', sizes: '192x192' }),
+    expect.objectContaining({ src: '/north-crow-app-icon-512-white.png', sizes: '512x512' }),
+    expect.objectContaining({ src: '/north-crow-app-icon-maskable-512-white.png', purpose: 'maskable' }),
   ]))
 
   for (const legalPage of ['privacy', 'terms']) {

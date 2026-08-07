@@ -39,7 +39,8 @@ export const DEFAULT_PREFERENCES: PreferencesV2 = {
   previousVolume: 0.55,
   wakeLockEnabled: false,
   theme: 'light',
-  starfieldSpeedSeconds: 50,
+  starfieldSpeedSeconds: 25,
+  starfieldTimingVersion: 2,
 }
 
 export interface PersistedStateV3 {
@@ -83,7 +84,13 @@ const PRESETS: ReadonlySet<PresetId> = new Set(PRESET_DEFINITIONS.map((preset) =
 const LEGACY_PRESETS = new Set(['deep-work', 'flow', 'calm-focus'])
 const INTENSITIES: ReadonlySet<Intensity> = new Set(['soft', 'standard', 'strong'])
 const THEMES: ReadonlySet<ThemeMode> = new Set(['light', 'dark'])
-const STARFIELD_SPEEDS: ReadonlySet<StarfieldSpeedSeconds> = new Set([30, 50, 75, 105])
+const STARFIELD_SPEEDS: ReadonlySet<StarfieldSpeedSeconds> = new Set([5, 25, 50, 100])
+const LEGACY_STARFIELD_SPEEDS = new Map<number, StarfieldSpeedSeconds>([
+  [30, 5],
+  [50, 25],
+  [75, 50],
+  [105, 100],
+])
 const TIMER_STATUSES = new Set(['idle', 'running', 'paused', 'completed'])
 const POMODORO_PHASES = new Set(['focus', 'short-break', 'long-break'])
 
@@ -117,19 +124,28 @@ export function isPreferencesV2(value: unknown): value is PreferencesV2 {
   return value.version === 2
     && PRESETS.has(value.preset as PresetId)
     && THEMES.has(value.theme as ThemeMode)
+    && (value.starfieldTimingVersion === undefined || value.starfieldTimingVersion === 2)
     // Existing browser-only preferences predate this setting. Accept them once,
     // then hydrate the default below instead of discarding a person's setup.
     && (value.starfieldSpeedSeconds === undefined
-      || STARFIELD_SPEEDS.has(value.starfieldSpeedSeconds as StarfieldSpeedSeconds))
+      || STARFIELD_SPEEDS.has(value.starfieldSpeedSeconds as StarfieldSpeedSeconds)
+      || LEGACY_STARFIELD_SPEEDS.has(value.starfieldSpeedSeconds as number))
     && hasValidPreferenceFields(value)
 }
 
-const normalizePreferences = (preferences: PreferencesV2): PreferencesV2 => ({
-  ...preferences,
-  starfieldSpeedSeconds: STARFIELD_SPEEDS.has(preferences.starfieldSpeedSeconds)
+const normalizePreferences = (preferences: PreferencesV2): PreferencesV2 => {
+  const isCurrentTiming = preferences.starfieldTimingVersion === 2
+  const speed = isCurrentTiming && STARFIELD_SPEEDS.has(preferences.starfieldSpeedSeconds)
     ? preferences.starfieldSpeedSeconds
-    : DEFAULT_PREFERENCES.starfieldSpeedSeconds,
-})
+    : LEGACY_STARFIELD_SPEEDS.get(preferences.starfieldSpeedSeconds as number)
+      ?? DEFAULT_PREFERENCES.starfieldSpeedSeconds
+
+  return {
+    ...preferences,
+    starfieldSpeedSeconds: speed,
+    starfieldTimingVersion: 2,
+  }
+}
 
 const isLegacyPreferencesV1 = (value: unknown): value is LegacyPreferencesV1 => {
   if (!isObject(value)) return false
@@ -267,6 +283,7 @@ const migrateLegacyState = (legacy: LegacyPersistedStateV1): PersistedStateV2 =>
     version: 2,
     theme: 'light',
     starfieldSpeedSeconds: DEFAULT_PREFERENCES.starfieldSpeedSeconds,
+    starfieldTimingVersion: 2,
   },
   timer: { ...legacy.timer },
 })
