@@ -184,28 +184,35 @@ html[data-theme="dark"] .app {
 }
 
 .brand {
-  display: inline-flex;
-  gap: 11px;
-  align-items: center;
-  color: var(--ink);
-  font-size: 20px;
-  font-weight: 760;
-  letter-spacing: -0.045em;
+  display: inline-block;
+  line-height: 0;
   text-decoration: none;
 }
 
-.brand__mark {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  flex: 0 0 auto;
+.brand__logo {
+  display: block;
+  width: 164px;
+  height: 43px;
 }
 
-.brand__mark svg {
-  width: 36px;
-  height: 36px;
-  filter: drop-shadow(0 8px 11px rgb(37 79 71 / 20%));
+.brand__logo img {
+  display: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.brand__logo-full--light {
+  display: block !important;
+}
+
+html[data-theme="dark"] .brand__logo-full--light {
+  display: none !important;
+}
+
+html[data-theme="dark"] .brand__logo-full--dark {
+  display: block !important;
 }
 
 .header-actions {
@@ -3076,6 +3083,27 @@ html[data-theme="dark"] .traffic-hero {
     padding: 12px 20px 96px;
   }
 
+  .brand__logo {
+    width: 38px;
+    height: 42px;
+  }
+
+  .brand__logo-full {
+    display: none !important;
+  }
+
+  .brand__logo-mark--light {
+    display: block !important;
+  }
+
+  html[data-theme="dark"] .brand__logo-mark--light {
+    display: none !important;
+  }
+
+  html[data-theme="dark"] .brand__logo-mark--dark {
+    display: block !important;
+  }
+
   .app-header {
     margin-bottom: 12px;
   }
@@ -3381,10 +3409,6 @@ html[data-theme="dark"] .traffic-hero {
 @media (max-width: 360px) {
   .app-shell {
     padding-inline: 12px;
-  }
-
-  .brand__word {
-    display: none;
   }
 
   .header-actions {
