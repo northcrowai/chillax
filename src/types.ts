@@ -13,6 +13,9 @@ export type RecordedPresetId =
   | 'lofi-soft-study'
   | 'lofi-cafe-focus'
   | 'lofi-night-notes'
+  | 'lofi-daybreak'
+  | 'lofi-autumn-colors'
+  | 'lofi-under-the-stars'
 
 export type PresetId = ProceduralPresetId | RecordedPresetId
 

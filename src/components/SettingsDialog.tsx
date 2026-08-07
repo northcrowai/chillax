@@ -35,6 +35,9 @@ const SOUND_CREDITS = [
   { name: 'Soft Study', creator: 'OMF-Games', license: 'CC0', url: 'https://opengameart.org/content/lofi-hip-hop-loop' },
   { name: 'Café Focus', creator: 'OMF-Games / qubodup', license: 'CC0', url: 'https://opengameart.org/content/chill-lofi-inspired-loop-edit' },
   { name: 'Night Notes', creator: 'OMF-Games', license: 'CC0', url: 'https://opengameart.org/content/lofi-again' },
+  { name: 'Daybreak Beat', creator: 'omfgdude', license: 'CC0', url: 'https://opengameart.org/content/lofi-hip-hop' },
+  { name: 'Autumn Colors', creator: 'pickentcode', license: 'CC0', url: 'https://opengameart.org/content/relaxing-lo-fi-songs' },
+  { name: 'Under the Stars', creator: 'pickentcode', license: 'CC0', url: 'https://opengameart.org/content/relaxing-lo-fi-songs' },
 ] as const
 
 export function SettingsDialog({
@@ -195,7 +198,7 @@ export function SettingsDialog({
           <summary>
             <span>
               <strong>Open sound credits</strong>
-              <small>12 recordings and music loops / 19.2 MB / loaded only when selected</small>
+              <small>15 recordings and music loops / 25.2 MB / loaded only when selected</small>
             </span>
           </summary>
           <ul>

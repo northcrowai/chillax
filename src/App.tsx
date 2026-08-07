@@ -55,7 +55,7 @@ import type {
   TimerStatus,
 } from './types'
 
-const FOOTER_FACTS = ['15 soundscapes', '19.2 MB open audio pack', 'No analytics'] as const
+const FOOTER_FACTS = ['18 soundscapes', '25.2 MB open audio pack'] as const
 
 type AppView = 'focus' | 'traffic' | 'weather'
 

@@ -20,8 +20,11 @@ All included recordings are either dedicated to the public domain with CC0 1.0 o
 | `soft-study.ogg` | OMF-Games / omfgdude | [Lofi Hip Hop Loop](https://opengameart.org/content/lofi-hip-hop-loop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `cafe-focus.ogg` | omfgdude; loop edit by qubodup | [Chill lofi inspired - loop edit](https://opengameart.org/content/chill-lofi-inspired-loop-edit) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `lofi-again.ogg` | OMF-Games / omfgdude | [Lofi again](https://opengameart.org/content/lofi-again) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `daybreak.ogg` | omfgdude | [lofi hip hop](https://opengameart.org/content/lofi-hip-hop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `autumn-colors.mp3` | pickentcode | [Relaxing Lo-Fi Songs](https://opengameart.org/content/relaxing-lo-fi-songs) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `under-the-stars.mp3` | pickentcode | [Relaxing Lo-Fi Songs](https://opengameart.org/content/relaxing-lo-fi-songs) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
 
-Total packaged size: 20,126,006 bytes (19.19 MiB).
+Total packaged size: 26,383,257 bytes (25.16 MiB).
 
 ## Integrity
 
@@ -40,4 +43,7 @@ DEBD59186E58B751EBA29DE80E1368C3234526F1EFC89A91B40CE469CFFB1479  wind.ogg
 CCAA02BB60310146F1FA3B1C70BE0A5A57F0674B9C4944A22B85B0C03E932CDB  cafe-focus.ogg
 D3B3410A186D45DADBCF87A8072B5A7F3B3F5A11FE38D9A7E9BDB3F66D5D86FA  lofi-again.ogg
 E57BA821D4DB8D66783CA984A2778EC68D1439E862239EC36407344EF3BD1EAB  soft-study.ogg
+8641E8203D0E7DC06DB0276B69FC15F59E9F45FAF76D2D647BC076A3339C1EF1  daybreak.ogg
+7E8CC71E10AF370CC0AD81E1B27EF91A496CE3FB4B905EACC4B84391FE49DE3D  autumn-colors.mp3
+B6D023895AC7A7879B5EEA4BED58D221925CEDAE8856D340B669C441A650227C  under-the-stars.mp3
 ```

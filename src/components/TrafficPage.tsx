@@ -1,6 +1,7 @@
 import type { JSX, Ref } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { PauseIcon, PlayIcon, RefreshIcon, TrafficIcon } from './Icons'
+import { assetPath } from '../lib/assets'
 import type { TimerStatus } from '../types'
 
 export type ArrivalCushionMinutes = 0 | 5 | 10 | 15
@@ -163,6 +164,7 @@ export function TrafficPage({
   return (
     <main class="app-main traffic-main">
       <section class="traffic-hero" aria-labelledby="traffic-page-title">
+        <img alt="" aria-hidden="true" class="traffic-hero__image" src={assetPath('/traffic-hero-commute.png')} />
         <div class="traffic-hero__copy">
           <span class="eyebrow">Traffic</span>
           <TrafficIcon />

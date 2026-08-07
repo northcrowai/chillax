@@ -1024,6 +1024,9 @@ html[data-theme="dark"] .visual-panel {
 .sound-card--lofi-soft-study { --card-a: #8b5f9d; --card-b: #d9a7d2; }
 .sound-card--lofi-cafe-focus { --card-a: #9f6041; --card-b: #e3b878; }
 .sound-card--lofi-night-notes { --card-a: #515b8e; --card-b: #aaa7d6; }
+.sound-card--lofi-daybreak { --card-a: #866742; --card-b: #e3c38b; }
+.sound-card--lofi-autumn-colors { --card-a: #a3524b; --card-b: #e4a881; }
+.sound-card--lofi-under-the-stars { --card-a: #4d5685; --card-b: #aeb8e0; }
 
 .weather-main {
   gap: 20px;
@@ -1979,49 +1982,30 @@ html[data-theme="dark"] .weather-icon--storm {
   min-height: 310px;
   padding: clamp(26px, 4vw, 48px);
   overflow: hidden;
-  background:
-    linear-gradient(118deg, color-mix(in srgb, var(--accent-soft) 76%, var(--surface-solid)) 0%, color-mix(in srgb, #bfe1dc 44%, var(--surface)) 100%);
+  color: #fff;
+  background: #08111d;
   border: 1px solid var(--line);
   border-radius: 32px;
   box-shadow: var(--shadow);
 }
 
-html[data-theme="dark"] .traffic-hero {
-  background:
-    linear-gradient(118deg, #35173f 0%, #182b30 100%);
-}
-
-.traffic-hero::before,
-.traffic-hero::after {
+.traffic-hero::before {
   position: absolute;
   content: "";
+  inset: 0;
   pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(90deg, rgb(3 10 21 / 80%) 0%, rgb(5 10 22 / 51%) 47%, rgb(4 9 19 / 71%) 100%);
 }
 
-.traffic-hero::before {
-  inset: -65% -8% -55% 31%;
-  background:
-    repeating-radial-gradient(
-      ellipse at 54% 47%,
-      transparent 0 25px,
-      color-mix(in srgb, var(--accent) 18%, transparent) 26px 28px,
-      transparent 29px 48px
-    );
-  opacity: 0.82;
-  transform: rotate(-13deg) scaleX(1.25);
-}
-
-.traffic-hero::after {
-  inset: 24% 35% -72% -18%;
-  background:
-    repeating-radial-gradient(
-      ellipse at 48% 50%,
-      transparent 0 19px,
-      color-mix(in srgb, var(--accent-strong) 21%, transparent) 20px 21px,
-      transparent 22px 39px
-    );
-  opacity: 0.64;
-  transform: rotate(17deg) scaleX(1.5);
+.traffic-hero__image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .traffic-hero__copy,
@@ -2039,7 +2023,7 @@ html[data-theme="dark"] .traffic-hero {
   width: 34px;
   height: 34px;
   margin: 15px 0 10px;
-  color: var(--accent-strong);
+  color: #e7b2ff;
 }
 
 .traffic-hero__copy h1 {
@@ -2054,7 +2038,7 @@ html[data-theme="dark"] .traffic-hero {
 .traffic-hero__copy p {
   max-width: 520px;
   margin: 18px 0 0;
-  color: var(--ink-soft);
+  color: rgb(255 255 255 / 78%);
   font-size: 15px;
   line-height: 1.65;
 }
@@ -2063,10 +2047,11 @@ html[data-theme="dark"] .traffic-hero {
   display: grid;
   gap: 18px;
   padding: 19px;
-  background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
-  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface-solid) 91%, transparent);
+  border: 1px solid color-mix(in srgb, #fff 18%, var(--line-strong));
   border-radius: 23px;
-  box-shadow: 0 18px 50px rgb(22 15 28 / 10%);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 28%);
   backdrop-filter: blur(22px);
 }
 

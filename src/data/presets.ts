@@ -237,6 +237,51 @@ export const PRESETS: readonly PresetDefinition[] = [
       sourceUrl: 'https://opengameart.org/content/lofi-again',
     },
   },
+  {
+    id: 'lofi-daybreak',
+    name: 'Daybreak Beat',
+    shortName: 'Daybreak',
+    description: 'A light hip-hop loop for an easy start',
+    sound: 'Lo-fi loop / omfgdude',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: assetPath('/audio/lofi/daybreak.ogg'),
+      credit: 'omfgdude',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/lofi-hip-hop',
+    },
+  },
+  {
+    id: 'lofi-autumn-colors',
+    name: 'Autumn Colors',
+    shortName: 'Autumn',
+    description: 'Warm lo-fi rhythm with a soft evening feel',
+    sound: 'Lo-fi music / pickentcode',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: assetPath('/audio/lofi/autumn-colors.mp3'),
+      credit: 'pickentcode',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/relaxing-lo-fi-songs',
+    },
+  },
+  {
+    id: 'lofi-under-the-stars',
+    name: 'Under the Stars',
+    shortName: 'Under stars',
+    description: 'Low-key beats for late, unhurried work',
+    sound: 'Lo-fi music / pickentcode',
+    collection: 'lofi',
+    source: {
+      type: 'recorded',
+      src: assetPath('/audio/lofi/under-the-stars.mp3'),
+      credit: 'pickentcode',
+      license: 'CC0',
+      sourceUrl: 'https://opengameart.org/content/relaxing-lo-fi-songs',
+    },
+  },
 ] as const
 
 export const INTENSITIES: readonly {

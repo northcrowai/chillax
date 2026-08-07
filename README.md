@@ -6,7 +6,7 @@ Chillax is a personal, installable focus app with original procedural tones and 
 
 - Three generated focus tones: Deep Work, Flow State, and Calm Focus
 - Nine CC0/public-domain nature recordings: four rain textures, rainy roof, two forests, fireplace, and wind
-- Three seamless CC0 lo-fi music loops for studying and focused work
+- Six CC0 lo-fi music loops for studying and focused work
 - Same-origin audio streaming with metadata-only preload and two-second crossfades
 - Soft, Standard, and Strong texture levels; recorded sounds change EQ and density without restarting
 - 60-minute, infinite, and custom sessions
@@ -25,7 +25,7 @@ Chillax is a personal, installable focus app with original procedural tones and 
 
 The generated audio is original. Chillax does not use Brain.fm recordings, assets, branding, patented rapid-modulation implementation, or medical claims.
 
-The recorded pack is 19.19 MiB, is loaded only when a recorded sound is selected, and is excluded from the initial PWA precache. Source and license details are in [THIRD_PARTY_AUDIO.md](./THIRD_PARTY_AUDIO.md).
+The recorded pack is 25.16 MiB, is loaded only when a recorded sound is selected, and is excluded from the initial PWA precache. Source and license details are in [THIRD_PARTY_AUDIO.md](./THIRD_PARTY_AUDIO.md).
 
 Weather photography is a same-origin, on-demand set of optimized Unsplash images. It can be hidden, changes with the forecast and local time of day, and remembers a favorite for each condition/time combination. Source and license details are in [THIRD_PARTY_PHOTOS.md](./THIRD_PARTY_PHOTOS.md).
 
