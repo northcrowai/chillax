@@ -3,6 +3,7 @@ import type {
   PresetId,
   ProceduralPresetId,
 } from '../types'
+import { assetPath } from '../lib/assets'
 
 export type SoundCollection = 'focus' | 'nature' | 'lofi'
 
@@ -65,7 +66,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/rain-light.ogg',
+      src: assetPath('/audio/ambient/rain-light.ogg'),
       credit: 'Ylmir',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/rain-loopable',
@@ -80,7 +81,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/rain-soft.ogg',
+      src: assetPath('/audio/ambient/rain-soft.ogg'),
       credit: 'Ylmir',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/rain-loopable',
@@ -95,7 +96,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/rain-steady.ogg',
+      src: assetPath('/audio/ambient/rain-steady.ogg'),
       credit: 'Ylmir',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/rain-loopable',
@@ -110,7 +111,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/rain-full.ogg',
+      src: assetPath('/audio/ambient/rain-full.ogg'),
       credit: 'Ylmir',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/rain-loopable',
@@ -125,7 +126,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/rain-gutter.mp3',
+      src: assetPath('/audio/ambient/rain-gutter.mp3'),
       credit: 'Ogrebane',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/rain-gutter-loop',
@@ -140,7 +141,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/forest-ambience.mp3',
+      src: assetPath('/audio/ambient/forest-ambience.mp3'),
       credit: 'TinyWorlds',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/node/23888',
@@ -155,7 +156,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/forest-morning.ogg',
+      src: assetPath('/audio/ambient/forest-morning.ogg'),
       credit: 'nille',
       license: 'Public domain',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg',
@@ -170,7 +171,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/fireplace.ogg',
+      src: assetPath('/audio/ambient/fireplace.ogg'),
       credit: 'inchadney',
       license: 'CC0',
       sourceUrl: 'https://freesound.org/people/inchadney/sounds/132534/',
@@ -185,7 +186,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'nature',
     source: {
       type: 'recorded',
-      src: '/audio/ambient/wind.ogg',
+      src: assetPath('/audio/ambient/wind.ogg'),
       credit: 'felix.blume',
       license: 'CC0',
       sourceUrl: 'https://freesound.org/people/felix.blume/sounds/139337/',
@@ -200,7 +201,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'lofi',
     source: {
       type: 'recorded',
-      src: '/audio/lofi/soft-study.ogg',
+      src: assetPath('/audio/lofi/soft-study.ogg'),
       credit: 'OMF-Games',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/lofi-hip-hop-loop',
@@ -215,7 +216,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'lofi',
     source: {
       type: 'recorded',
-      src: '/audio/lofi/cafe-focus.ogg',
+      src: assetPath('/audio/lofi/cafe-focus.ogg'),
       credit: 'OMF-Games / qubodup',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/chill-lofi-inspired-loop-edit',
@@ -230,7 +231,7 @@ export const PRESETS: readonly PresetDefinition[] = [
     collection: 'lofi',
     source: {
       type: 'recorded',
-      src: '/audio/lofi/lofi-again.ogg',
+      src: assetPath('/audio/lofi/lofi-again.ogg'),
       credit: 'OMF-Games',
       license: 'CC0',
       sourceUrl: 'https://opengameart.org/content/lofi-again',

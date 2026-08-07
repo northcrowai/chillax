@@ -1,4 +1,5 @@
 import type { WeatherConditionKind } from '../lib/weather'
+import { assetPath } from '../lib/assets'
 
 export type WeatherPhotoPeriod = 'morning' | 'afternoon' | 'evening' | 'night'
 
@@ -36,7 +37,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'Sunlight over an open green field',
     id: 'clear-day',
     sourceUrl: 'https://unsplash.com/photos/7FcZfpFZ7sM',
-    src: '/weather-photos/clear-day.webp',
+    src: assetPath('/weather-photos/clear-day.webp'),
   },
   clouds: {
     author: 'Kenrick Mills',
@@ -44,7 +45,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'Dramatic clouds at noon',
     id: 'clouds',
     sourceUrl: 'https://unsplash.com/photos/eCBGt3ashQU',
-    src: '/weather-photos/clouds.webp',
+    src: assetPath('/weather-photos/clouds.webp'),
   },
   rain: {
     author: 'masahiro miyagi',
@@ -52,7 +53,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'A rain-soaked city street at night',
     id: 'rain',
     sourceUrl: 'https://unsplash.com/photos/DxrV_lky_Sc',
-    src: '/weather-photos/rain.webp',
+    src: assetPath('/weather-photos/rain.webp'),
   },
   snow: {
     author: 'Shutter Speed',
@@ -60,7 +61,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'Snow-covered mountains under a blue sky',
     id: 'snow',
     sourceUrl: 'https://unsplash.com/photos/WbCYPK2JmWA',
-    src: '/weather-photos/snow.webp',
+    src: assetPath('/weather-photos/snow.webp'),
   },
   storm: {
     author: 'Drew Stock',
@@ -68,7 +69,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'Lightning breaking through storm clouds',
     id: 'storm',
     sourceUrl: 'https://unsplash.com/photos/r-ulEMCm4fQ',
-    src: '/weather-photos/storm.webp',
+    src: assetPath('/weather-photos/storm.webp'),
   },
   fog: {
     author: 'Timon Reinhard',
@@ -76,7 +77,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'A quiet woodland softened by fog',
     id: 'fog',
     sourceUrl: 'https://unsplash.com/photos/82Vi8BBRXl4',
-    src: '/weather-photos/fog.webp',
+    src: assetPath('/weather-photos/fog.webp'),
   },
   'clear-night': {
     author: 'Casey Horner',
@@ -84,7 +85,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'A star-filled night sky',
     id: 'clear-night',
     sourceUrl: 'https://unsplash.com/photos/WGdZyGkfcBQ',
-    src: '/weather-photos/clear-night.webp',
+    src: assetPath('/weather-photos/clear-night.webp'),
   },
   'golden-hour': {
     author: 'Harsha Kulkarni',
@@ -92,7 +93,7 @@ const WEATHER_PHOTOS: Readonly<Record<WeatherPhotoId, WeatherPhoto>> = {
     description: 'Golden-hour light over a grassy field',
     id: 'golden-hour',
     sourceUrl: 'https://unsplash.com/photos/9jEx5fUCMUY',
-    src: '/weather-photos/golden-hour.webp',
+    src: assetPath('/weather-photos/golden-hour.webp'),
   },
 }
 

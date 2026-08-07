@@ -31,6 +31,7 @@ import { usePwaInstall } from './hooks/usePwaInstall'
 import { useTrafficPlan } from './hooks/useTrafficPlan'
 import { useWakeLock } from './hooks/useWakeLock'
 import { DEFAULT_POMODORO_CONFIG } from './lib/pomodoro'
+import { assetPath } from './lib/assets'
 import { DEFAULT_SESSION_PLAN, createSessionPlan, resolveSessionPlan } from './lib/session'
 import {
   DEFAULT_PREFERENCES,
@@ -57,10 +58,20 @@ const FOOTER_FACTS = ['15 soundscapes', '19.2 MB open audio pack', 'No analytics
 
 type AppView = 'focus' | 'traffic' | 'weather'
 
+const appBasePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+
+const toAppPath = (view: AppView) => {
+  const route = view === 'focus' ? '/' : `/${view}`
+  return `${appBasePath}${route}` || '/'
+}
+
 const getInitialView = (): AppView => {
   if (typeof window === 'undefined') return 'focus'
-  if (/^\/weather\/?$/.test(window.location.pathname)) return 'weather'
-  if (/^\/traffic\/?$/.test(window.location.pathname)) return 'traffic'
+  const route = appBasePath && window.location.pathname.startsWith(appBasePath)
+    ? window.location.pathname.slice(appBasePath.length) || '/'
+    : window.location.pathname
+  if (/^\/weather\/?$/.test(route)) return 'weather'
+  if (/^\/traffic\/?$/.test(route)) return 'traffic'
   return 'focus'
 }
 
@@ -150,7 +161,7 @@ export function App() {
 
   const navigateToView = useCallback((view: AppView) => {
     setActiveView(view)
-    const nextPath = view === 'focus' ? '/' : `/${view}`
+    const nextPath = toAppPath(view)
     if (window.location.pathname !== nextPath) {
       const updateHistory = view === 'focus' ? 'replaceState' : 'pushState'
       window.history[updateHistory]({ chillaxView: view }, '', nextPath)
@@ -466,8 +477,8 @@ export function App() {
       artist: 'Chillax Focus',
       album: preset.sound,
       artwork: [
-        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+        { src: assetPath('/pwa-192x192.png'), sizes: '192x192', type: 'image/png' },
+        { src: assetPath('/pwa-512x512.png'), sizes: '512x512', type: 'image/png' },
       ],
     })
     navigator.mediaSession.playbackState = sessionIsRunning ? 'playing' : 'paused'

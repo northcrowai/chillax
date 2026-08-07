@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks'
 import type { ThemeMode } from '../types'
+import { assetPath } from '../lib/assets'
 import { CloseIcon } from './Icons'
 
 interface SettingsDialogProps {
@@ -184,9 +185,9 @@ export function SettingsDialog({
           <strong>Private by design</strong>
           <p>Your settings, searched weather place, and Traffic preferences stay in this browser. Chillax has no account, analytics, cookies, or remote settings storage. Weather and Traffic send only the location data needed for the feature you choose; precise GPS coordinates and route results are never saved.</p>
           <p>
-            <a href="/privacy" rel="noreferrer" target="_blank">Privacy</a>
+            <a href={assetPath('/privacy')} rel="noreferrer" target="_blank">Privacy</a>
             {' · '}
-            <a href="/terms" rel="noreferrer" target="_blank">Terms</a>
+            <a href={assetPath('/terms')} rel="noreferrer" target="_blank">Terms</a>
           </p>
         </div>
 
