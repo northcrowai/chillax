@@ -57,7 +57,7 @@ test('loads the complete focus player without browser errors', async ({ page }) 
 
   await expect(page.getByText('Find your quiet.', { exact: true })).toBeVisible()
   await expect(page.locator('.intro--quote h1')).not.toHaveText('')
-  await expect(page.getByRole('link', { name: 'North Crow home' }).locator('img')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'North Crow home' }).locator('.brand__logo-full--light')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start focus session' })).toBeEnabled()
   await expect(page.getByLabel('60:00 remaining')).toBeVisible()
   await expect(page.getByRole('button', { name: /Deep Work/ })).toHaveAttribute('aria-pressed', 'true')

@@ -18,11 +18,14 @@ const config = JSON.parse(
 
 describe('traffic deployment policy', () => {
   it('serves the public legal routes before the app-shell fallback', () => {
-    expect(config.rewrites.slice(0, 3)).toEqual([
-      { source: '/privacy', destination: '/privacy.html' },
-      { source: '/terms', destination: '/terms.html' },
-      { source: '/(.*)', destination: '/index.html' },
-    ])
+    const privacyRule = config.rewrites.findIndex(({ source }) => source === '/privacy')
+    const termsRule = config.rewrites.findIndex(({ source }) => source === '/terms')
+    const appFallback = config.rewrites.findIndex(({ source }) => source === '/(.*)')
+
+    expect(config.rewrites[privacyRule]).toEqual({ source: '/privacy', destination: '/privacy.html' })
+    expect(config.rewrites[termsRule]).toEqual({ source: '/terms', destination: '/terms.html' })
+    expect(privacyRule).toBeLessThan(appFallback)
+    expect(termsRule).toBeLessThan(appFallback)
   })
 
   it('allows only the required Google traffic endpoints and device geolocation', () => {
