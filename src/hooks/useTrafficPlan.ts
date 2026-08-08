@@ -60,7 +60,7 @@ const isAutomaticTrafficDay = (date: Date) => {
 }
 
 const configurationMessage =
-  'Traffic is not configured yet. Add the Google Maps keys to enable route planning.'
+  'Traffic is optional. Add your own restricted Google Routes API and Maps Static API keys; see the README.'
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error

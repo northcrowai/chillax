@@ -684,7 +684,7 @@ export function App() {
           />
         ) : (
           <TrafficPage
-            configurationMessage="Traffic needs Google Maps browser keys before routes can be calculated."
+            configurationMessage="Traffic is optional. Add your own restricted Google Maps browser keys; see the README."
             configurationMissing={!traffic.isConfigured}
             cushionMinutes={traffic.preferences.cushionMinutes}
             drive={traffic.drive}

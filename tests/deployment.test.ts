@@ -17,6 +17,17 @@ const config = JSON.parse(
 ) as VercelConfig
 
 describe('traffic deployment policy', () => {
+  it('ships only blank, deployer-owned Google Maps configuration placeholders', () => {
+    const envExample = readFileSync(resolve(process.cwd(), '.env.example'), 'utf8')
+    const gitignore = readFileSync(resolve(process.cwd(), '.gitignore'), 'utf8')
+
+    expect(envExample).toMatch(/^VITE_GOOGLE_ROUTES_API_KEY=$/m)
+    expect(envExample).toMatch(/^VITE_GOOGLE_STATIC_MAPS_API_KEY=$/m)
+    expect(envExample).not.toMatch(/AIza[0-9A-Za-z_-]{20,}/)
+    expect(gitignore).toContain('.env.*')
+    expect(gitignore).toContain('!.env.example')
+  })
+
   it('serves the public legal routes before the app-shell fallback', () => {
     const privacyRule = config.rewrites.findIndex(({ source }) => source === '/privacy')
     const termsRule = config.rewrites.findIndex(({ source }) => source === '/terms')

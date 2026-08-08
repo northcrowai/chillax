@@ -115,7 +115,7 @@ describe('Chillax app', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.getByText(/Traffic needs Google Maps browser keys/i)).toBeInTheDocument()
+    expect(screen.getByText(/Add your own restricted Google Maps browser keys/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/on the Chillax timer/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pause focus session' })).toBeInTheDocument()
     expect(audioMocks.pause).not.toHaveBeenCalled()

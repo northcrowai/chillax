@@ -370,7 +370,7 @@ const requireApiKey = (apiKey: string): string => {
   if (!normalized) {
     throw new TrafficError(
       'configuration',
-      'Traffic is not configured yet. Add the Google Maps keys to enable route planning.',
+      'Traffic is optional. Add your own restricted Google Routes API and Maps Static API keys; see the README.',
     )
   }
   return normalized

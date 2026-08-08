@@ -5,7 +5,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', '.vercel', 'coverage', 'playwright-report', 'test-results', 'public/*.png'] },
+  { ignores: ['dist', 'dev-dist', '.vercel', 'coverage', 'playwright-report', 'test-results', 'output', 'public/*.png'] },
   js.configs.recommended,
   {
     files: ['scripts/**/*.mjs'],
