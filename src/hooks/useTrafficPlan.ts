@@ -54,6 +54,11 @@ const getBrowserStorage = (): Storage | null => {
 
 const getCurrentDate = () => new Date()
 
+const isAutomaticTrafficDay = (date: Date) => {
+  const day = date.getDay()
+  return day !== 0 && day !== 6
+}
+
 const configurationMessage =
   'Traffic is not configured yet. Add the Google Maps keys to enable route planning.'
 
@@ -154,6 +159,8 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     if (pendingRef.current) return false
 
     const automatic = calculateOptions.automatic === true
+    const calculationStartedAt = now()
+    if (automatic && !isAutomaticTrafficDay(calculationStartedAt)) return false
     if (!isConfigured) {
       if (!automatic) {
         setStatus('error')
@@ -162,7 +169,6 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
       return false
     }
 
-    const calculationStartedAt = now()
     let drive
     try {
       drive = getPlannedTrafficDrive(preferences, calculationStartedAt)
@@ -292,6 +298,7 @@ export function useTrafficPlan(options: UseTrafficPlanOptions = {}) {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
 
     const current = now()
+    if (!isAutomaticTrafficDay(current)) return false
     const currentMs = current.getTime()
     const leaveByMs = Date.parse(plan.leaveBy)
     const targetMs = Date.parse(plan.desiredArrivalTime)

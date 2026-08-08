@@ -79,6 +79,31 @@ describe('useTrafficPlan', () => {
     await waitFor(() => expect(fetchImpl.mock.calls.length).toBeGreaterThan(initialRequestCount))
   })
 
+  it('skips automatic routes on weekends but keeps manual recalculation available', async () => {
+    window.localStorage.setItem(TRAFFIC_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      version: 2,
+      homeAddress: '123 Example Home Street',
+      homeArrivalTime: '18:00',
+      workAddress: '456 Example Work Way',
+      workArrivalTime: '09:00',
+      cushionMinutes: 5,
+    }))
+    const fetchImpl = createFetchMock()
+    const { result } = renderHook(() => useTrafficPlan({
+      storage: window.localStorage,
+      fetchImpl,
+      now: () => new Date(2026, 7, 8, 9, 0),
+      routesApiKey: 'test-routes-key',
+      staticMapsApiKey: 'test-static-maps-key',
+    }))
+
+    await act(async () => { await Promise.resolve() })
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    await act(async () => { await result.current.calculate() })
+    expect(fetchImpl).toHaveBeenCalled()
+  })
+
   it('plans tomorrow morning from Home to Work and persists only the schedule', async () => {
     const fetchImpl = createFetchMock()
     const now = () => new Date(2026, 7, 6, 19, 0)
