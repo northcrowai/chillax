@@ -444,8 +444,14 @@ test('plans a mocked drive without interrupting the session and keeps only prefe
   await expect(page.getByText('30 min', { exact: true })).toBeVisible()
   await expect(page.getByText('+5 min', { exact: true })).toBeVisible()
   await expect(page.getByAltText('Google Maps route: Work to Home')).toBeVisible()
-  await page.setViewportSize({ width: 390, height: 844 })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page.setViewportSize({ width: 360, height: 740 })
+  const leaveClock = page.getByRole('status', { name: /Traffic reminder: leave by 5:20 PM/ })
+  await expect(leaveClock).toBeVisible()
+  const leaveClockBounds = await leaveClock.boundingBox()
+  expect(leaveClockBounds).not.toBeNull()
+  expect(leaveClockBounds!.x).toBeGreaterThanOrEqual(0)
+  expect(leaveClockBounds!.x + leaveClockBounds!.width).toBeLessThanOrEqual(360)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
   expect(routeRequest).toMatchObject({
     destination: { address: '100 Example Avenue' },
     origin: { address: '200 Sample Street' },
@@ -461,7 +467,7 @@ test('plans a mocked drive without interrupting the session and keeps only prefe
   await expect(page.getByRole('status', { name: /Traffic reminder: leave by 5:20 PM/ })).toBeVisible()
 
   await page.reload()
-  await expect(page.getByRole('status', { name: /Traffic reminder/ })).toHaveCount(0)
+  await expect(page.getByRole('status', { name: /Traffic reminder: leave by 5:20 PM/ })).toBeVisible()
   await page.getByRole('button', { name: 'Open traffic' }).click()
   await expect(page.getByRole('textbox', { name: 'Home address' })).toHaveValue('100 Example Avenue')
   await expect(page.getByLabel('Arrive home by')).toHaveValue('18:00')

@@ -3494,6 +3494,28 @@ html[data-theme="dark"] .traffic-hero {
   }
 }
 
+@media (max-width: 480px) {
+  .app-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-actions {
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(5, 44px);
+    min-width: 0;
+    gap: 6px;
+    justify-content: end;
+  }
+
+  .leave-by-clock--header {
+    grid-column: 3 / -1;
+    justify-content: center;
+    justify-self: stretch;
+  }
+}
+
 @media (max-width: 360px) {
   .app-shell {
     padding-inline: 12px;
